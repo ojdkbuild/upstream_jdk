@@ -244,3 +244,16 @@ ifeq ($(ENABLE_LIBFFI_BUNDLING), true)
 endif
 
 ################################################################################
+
+# Copy ojdkbuild libraries
+# nss
+$(eval $(call SetupCopyFiles, COPY_OJDKBUILD_NSS, \
+    FILES := $(shell pkg-config nss --variable=bundle_lib_path), \
+    DEST := $(call FindLibDirForModule, $(MODULE)), \
+    FLATTEN := true, \
+    MACRO := install-file-nolink, \
+))
+
+TARGETS += $(COPY_OJDKBUILD_NSS)
+
+##########################################################################################

@@ -53,13 +53,13 @@ ifeq ($(ENABLE_INTREE_EC), true)
           $(BUILD_LIBSUNEC_FLAGS) \
           -DMP_API_COMPATIBLE -DNSS_ECC_MORE_THAN_SUITE_B, \
       CXXFLAGS := $(filter-out $(ECC_JNI_SOLSPARC_FILTER), $(CXXFLAGS_JDKLIB)) \
-          $(BUILD_LIBSUNEC_FLAGS), \
+          $(BUILD_LIBSUNEC_FLAGS) -DSYSTEM_NSS $(shell pkg-config nss --cflags --msvc-syntax), \
       DISABLED_WARNINGS_gcc := sign-compare, \
       DISABLED_WARNINGS_microsoft := 4101 4244 4146 4018, \
       MAPFILE := $(TOPDIR)/make/mapfiles/libsunec/mapfile-vers, \
       LDFLAGS := $(LDFLAGS_JDKLIB) $(LDFLAGS_CXX_JDK), \
       LDFLAGS_macosx := $(call SET_SHARED_LIBRARY_ORIGIN), \
-      LIBS := $(LIBCXX), \
+      LIBS := $(LIBCXX) $(shell pkg-config nss --libs --msvc-syntax), \
       LIBS_linux := -lc, \
       LIBS_solaris := -lc, \
       VERSIONINFO_RESOURCE := $(GLOBAL_VERSION_INFO_RESOURCE), \

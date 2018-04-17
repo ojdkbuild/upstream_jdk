@@ -61,6 +61,7 @@ public final class SunEC extends Provider {
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 public Void run() {
                     System.loadLibrary("sunec"); // check for native library
+                    initialize();
                     return null;
                 }
             });
@@ -272,4 +273,9 @@ public final class SunEC extends Provider {
         putService(new ProviderService(this, "KeyAgreement",
             "ECDH", "sun.security.ec.ECDHKeyAgreement", null, ATTRS));
     }
+
+    /**
+    * Initialize the native code.
+    */
+    private static native void initialize();
 }
