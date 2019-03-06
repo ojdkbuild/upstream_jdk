@@ -381,7 +381,8 @@ AC_DEFUN([TOOLCHAIN_SETUP_VISUAL_STUDIO_ENV],
       $ECHO "@echo off" >  $EXTRACT_VC_ENV_BAT_FILE
       # This will end up something like:
       # call C:/progra~2/micros~2.0/vc/bin/amd64/vcvars64.bat
-      $ECHO "call $WINPATH_VS_ENV_CMD $VS_ENV_ARGS" >> $EXTRACT_VC_ENV_BAT_FILE
+      # ojdkbuild: disable bat call that muddles the env
+      #$ECHO "call $WINPATH_VS_ENV_CMD $VS_ENV_ARGS" >> $EXTRACT_VC_ENV_BAT_FILE
       # In some cases, the VS_ENV_CMD will change directory, change back so
       # the set-vs-env.sh ends up in the right place.
       $ECHO 'cd %~dp0' >> $EXTRACT_VC_ENV_BAT_FILE
