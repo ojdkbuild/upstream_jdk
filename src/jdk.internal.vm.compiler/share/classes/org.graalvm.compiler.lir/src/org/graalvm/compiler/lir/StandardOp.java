@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.lir;
 
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
@@ -31,12 +33,12 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
+import jdk.internal.vm.compiler.collections.EconomicSet;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;

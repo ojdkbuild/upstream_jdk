@@ -27,9 +27,14 @@
  * @run main IteratorMicroBenchmark iterations=1 size=8 warmup=0
  */
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.stream.Collectors.toList;
+
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
@@ -40,7 +45,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -67,16 +71,22 @@ public class IteratorMicroBenchmark {
 
     /** No guarantees, but effective in practice. */
     static void forceFullGc() {
-        CountDownLatch finalizeDone = new CountDownLatch(1);
-        WeakReference<?> ref = new WeakReference<Object>(new Object() {
-            protected void finalize() { finalizeDone.countDown(); }});
+        long timeoutMillis = 1000L;
+        CountDownLatch finalized = new CountDownLatch(1);
+        ReferenceQueue<Object> queue = new ReferenceQueue<>();
+        WeakReference<Object> ref = new WeakReference<>(
+            new Object() { protected void finalize() { finalized.countDown(); }},
+            queue);
         try {
-            for (int i = 0; i < 10; i++) {
+            for (int tries = 3; tries--> 0; ) {
                 System.gc();
-                if (finalizeDone.await(1L, TimeUnit.SECONDS) && ref.get() == null) {
+                if (finalized.await(timeoutMillis, MILLISECONDS)
+                    && queue.remove(timeoutMillis) != null
+                    && ref.get() == null) {
                     System.runFinalization(); // try to pick up stragglers
                     return;
                 }
+                timeoutMillis *= 4;
             }
         } catch (InterruptedException unexpected) {
             throw new AssertionError("unexpected InterruptedException");
@@ -165,16 +175,11 @@ public class IteratorMicroBenchmark {
     }
 
     private static Job[] filter(Pattern filter, Job[] jobs) {
-        if (filter == null) return jobs;
-        Job[] newJobs = new Job[jobs.length];
-        int n = 0;
-        for (Job job : jobs)
-            if (filter.matcher(job.name()).find())
-                newJobs[n++] = job;
-        // Arrays.copyOf not available in JDK 5
-        Job[] ret = new Job[n];
-        System.arraycopy(newJobs, 0, ret, 0, n);
-        return ret;
+        return (filter == null) ? jobs
+            : Arrays.stream(jobs)
+            .filter(job -> filter.matcher(job.name()).find())
+            .collect(toList())
+            .toArray(new Job[0]);
     }
 
     private static void deoptimize(int sum) {
@@ -641,6 +646,24 @@ public class IteratorMicroBenchmark {
                     for (int i = 0; i < iterations; i++) {
                         sum[0] = 0;
                         al.toArray(a);
+                        for (Object o : a)
+                            sum[0] += (Integer) o;
+                        check.sum(sum[0]);}}},
+            new Job("ArrayList subList .toArray()") {
+                public void work() throws Throwable {
+                    int[] sum = new int[1];
+                    for (int i = 0; i < iterations; i++) {
+                        sum[0] = 0;
+                        for (Object o : asSubList(al).toArray())
+                            sum[0] += (Integer) o;
+                        check.sum(sum[0]);}}},
+            new Job("ArrayList subList .toArray(a)") {
+                public void work() throws Throwable {
+                    Integer[] a = new Integer[size];
+                    int[] sum = new int[1];
+                    for (int i = 0; i < iterations; i++) {
+                        sum[0] = 0;
+                        asSubList(al).toArray(a);
                         for (Object o : a)
                             sum[0] += (Integer) o;
                         check.sum(sum[0]);}}},

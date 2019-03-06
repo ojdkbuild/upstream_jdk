@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
@@ -30,6 +32,7 @@ import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.internal.vm.compiler.collections.EconomicMap;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
@@ -42,12 +45,11 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.util.EconomicMap;
-import org.graalvm.word.LocationIdentity;
+import jdk.internal.vm.compiler.word.LocationIdentity;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -63,7 +65,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final ForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new ForeignCallDescriptor("test_deoptimize_call_int", int.class, int.class);
 
-    protected final HotSpotJVMCIRuntimeProvider jvmciRuntime;
+    protected final HotSpotJVMCIRuntime jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
 
     protected final EconomicMap<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = EconomicMap.create();
@@ -71,7 +73,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     protected final CodeCacheProvider codeCache;
     protected final WordTypes wordTypes;
 
-    public HotSpotForeignCallsProviderImpl(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
+    public HotSpotForeignCallsProviderImpl(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache,
                     WordTypes wordTypes) {
         this.jvmciRuntime = jvmciRuntime;
         this.runtime = runtime;

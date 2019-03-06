@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,6 @@ class FreeChunk;
 class ParNewGeneration;
 class PromotionInfo;
 class ScanMarkedObjectsAgainCarefullyClosure;
-class TenuredGeneration;
 class SerialOldTracer;
 
 // A generic CMS bit map. It's the basis for both the CMS marking bit map
@@ -77,9 +76,9 @@ class SerialOldTracer;
 // methods are used). This is essentially a wrapper around the BitMap class,
 // with one bit per (1<<_shifter) HeapWords. (i.e. for the marking bit map,
 // we have _shifter == 0. and for the mod union table we have
-// shifter == CardTableModRefBS::card_shift - LogHeapWordSize.)
+// shifter == CardTable::card_shift - LogHeapWordSize.)
 // XXX 64-bit issues in BitMap?
-class CMSBitMap VALUE_OBJ_CLASS_SPEC {
+class CMSBitMap {
   friend class VMStructs;
 
   HeapWord*    _bmStartWord;   // base address of range covered by map
@@ -246,11 +245,11 @@ class CMSMarkStack: public CHeapObj<mtGC>  {
 
   // Compute the least valued stack element.
   oop least_value(HeapWord* low) {
-     oop least = (oop)low;
-     for (size_t i = 0; i < _index; i++) {
-       least = MIN2(least, _base[i]);
-     }
-     return least;
+    HeapWord* least = low;
+    for (size_t i = 0; i < _index; i++) {
+      least = MIN2(least, (HeapWord*)_base[i]);
+    }
+    return (oop)least;
   }
 
   // Exposed here to allow stack expansion in || case.
@@ -331,7 +330,7 @@ class ChunkArray: public CHeapObj<mtGC> {
 // Timing, allocation and promotion statistics for gc scheduling and incremental
 // mode pacing.  Most statistics are exponential averages.
 //
-class CMSStats VALUE_OBJ_CLASS_SPEC {
+class CMSStats {
  private:
   ConcurrentMarkSweepGeneration* const _cms_gen;   // The cms (old) gen.
 
@@ -487,8 +486,7 @@ public:
   { }
 
   // Executes a task using worker threads.
-  virtual void execute(ProcessTask& task);
-  virtual void execute(EnqueueTask& task);
+  virtual void execute(ProcessTask& task, uint ergo_workers);
 private:
   CMSCollector& _collector;
 };
@@ -553,6 +551,7 @@ class CMSCollector: public CHeapObj<mtGC> {
 
   // Performance Counters
   CollectorCounters* _gc_counters;
+  CollectorCounters* _cgc_counters;
 
   // Initialization Errors
   bool _completed_initialization;
@@ -616,7 +615,7 @@ class CMSCollector: public CHeapObj<mtGC> {
 
  protected:
   ConcurrentMarkSweepGeneration* _cmsGen;  // Old gen (CMS)
-  MemRegion                      _span;    // Span covering above two
+  MemRegion                      _span;    // Span covering above
   CardTableRS*                   _ct;      // Card table
 
   // CMS marking support structures
@@ -640,8 +639,9 @@ class CMSCollector: public CHeapObj<mtGC> {
   NOT_PRODUCT(ssize_t _num_par_pushes;)
 
   // ("Weak") Reference processing support.
-  ReferenceProcessor*            _ref_processor;
-  CMSIsAliveClosure              _is_alive_closure;
+  SpanSubjectToDiscoveryClosure _span_based_discoverer;
+  ReferenceProcessor*           _ref_processor;
+  CMSIsAliveClosure             _is_alive_closure;
   // Keep this textually after _markBitMap and _span; c'tor dependency.
 
   ConcurrentMarkSweepThread*     _cmsThread;   // The thread doing the work
@@ -840,6 +840,7 @@ class CMSCollector: public CHeapObj<mtGC> {
                ConcurrentMarkSweepPolicy*     cp);
   ConcurrentMarkSweepThread* cmsThread() { return _cmsThread; }
 
+  MemRegion ref_processor_span() const { return _span_based_discoverer.span(); }
   ReferenceProcessor* ref_processor() { return _ref_processor; }
   void ref_processor_init();
 
@@ -927,7 +928,8 @@ class CMSCollector: public CHeapObj<mtGC> {
   NOT_PRODUCT(bool is_cms_reachable(HeapWord* addr);)
 
   // Performance Counter Support
-  CollectorCounters* counters()    { return _gc_counters; }
+  CollectorCounters* counters()     { return _gc_counters; }
+  CollectorCounters* cgc_counters() { return _cgc_counters; }
 
   // Timer stuff
   void    startTimer() { assert(!_timer.is_active(), "Error"); _timer.start();   }
@@ -1188,16 +1190,12 @@ class ConcurrentMarkSweepGeneration: public CardGeneration {
   void save_sweep_limit();
 
   // More iteration support
-  virtual void oop_iterate(ExtendedOopClosure* cl);
+  virtual void oop_iterate(OopIterateClosure* cl);
   virtual void safe_object_iterate(ObjectClosure* cl);
   virtual void object_iterate(ObjectClosure* cl);
 
-  // Need to declare the full complement of closures, whether we'll
-  // override them or not, or get message from the compiler:
-  //   oop_since_save_marks_iterate_nv hides virtual function...
-  #define CMS_SINCE_SAVE_MARKS_DECL(OopClosureType, nv_suffix) \
-    void oop_since_save_marks_iterate##nv_suffix(OopClosureType* cl);
-  ALL_SINCE_SAVE_MARKS_CLOSURES(CMS_SINCE_SAVE_MARKS_DECL)
+  template <typename OopClosureType>
+  void oop_since_save_marks_iterate(OopClosureType* cl);
 
   // Smart allocation  XXX -- move to CFLSpace?
   void setNearLargestChunk();
@@ -1309,7 +1307,7 @@ class ParMarkFromRootsClosure: public BitMapClosure {
 
 // The following closures are used to do certain kinds of verification of
 // CMS marking.
-class PushAndMarkVerifyClosure: public MetadataAwareOopClosure {
+class PushAndMarkVerifyClosure: public MetadataVisitingOopIterateClosure {
   CMSCollector*    _collector;
   MemRegion        _span;
   CMSBitMap*       _verification_bm;
@@ -1317,10 +1315,8 @@ class PushAndMarkVerifyClosure: public MetadataAwareOopClosure {
   CMSMarkStack*    _mark_stack;
  protected:
   void do_oop(oop p);
-  template <class T> inline void do_oop_work(T *p) {
-    oop obj = oopDesc::load_decode_heap_oop(p);
-    do_oop(obj);
-  }
+  template <class T> void do_oop_work(T *p);
+
  public:
   PushAndMarkVerifyClosure(CMSCollector* cms_collector,
                            MemRegion span,

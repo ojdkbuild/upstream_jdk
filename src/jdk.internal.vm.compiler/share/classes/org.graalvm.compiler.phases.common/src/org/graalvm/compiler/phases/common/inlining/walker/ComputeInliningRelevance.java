@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.phases.common.inlining.walker;
 
 import java.util.ArrayList;
 import java.util.function.ToDoubleFunction;
 
+import jdk.internal.vm.compiler.collections.EconomicMap;
+import jdk.internal.vm.compiler.collections.Equivalence;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeWorkList;
@@ -43,8 +47,6 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.util.Equivalence;
-import org.graalvm.util.EconomicMap;
 
 public class ComputeInliningRelevance {
 

@@ -21,6 +21,8 @@
  * questions.
  */
 //JaCoCo Exclude
+
+
 package org.graalvm.compiler.nodes.java;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
@@ -122,6 +124,13 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
 
     public static boolean throwsIllegalArgumentException(ResolvedJavaType elementType) {
         return elementType.getJavaKind() == JavaKind.Void;
+    }
+
+    @NodeIntrinsic
+    private static native Object newArray(Class<?> componentType, int length, @ConstantNodeParameter boolean fillContents);
+
+    public static Object newArray(Class<?> componentType, int length) {
+        return newArray(componentType, length, true);
     }
 
     @NodeIntrinsic

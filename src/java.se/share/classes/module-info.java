@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,13 @@
 /**
  * Defines the core Java SE API.
  * <P>
- * The modules defining the CORBA and Java EE APIs are not required by
- * this module, but they are required by the
- * <a href="java.se.ee-summary.html">{@code java.se.ee}</a> module.
  *
  * <dl>
  * <dt class="simpleTagLabel" style="font-family:'DejaVu Sans', Arial, Helvetica, sans serif">Optional for the Java SE Platform:</dt>
  * <dd>
- *   <a href="../specs/jni/index.html">Java Native Interface (JNI)</a><br>
- *   <a href="../specs/jvmti.html">Java Virtual Machine Tool Interface (JVM TI)</a><br>
- *   <a href="../specs/jdwp/jdwp-spec.html">Java Debug Wire Protocol (JDWP)</a><br>
+ *   <a href="{@docRoot}/../specs/jni/index.html">Java Native Interface (JNI)</a><br>
+ *   <a href="{@docRoot}/../specs/jvmti.html">Java Virtual Machine Tool Interface (JVM TI)</a><br>
+ *   <a href="{@docRoot}/../specs/jdwp/jdwp-spec.html">Java Debug Wire Protocol (JDWP)</a><br>
  * </dd>
  * </dl>
  *
@@ -51,6 +48,7 @@ module java.se {
     requires transitive java.management;
     requires transitive java.management.rmi;
     requires transitive java.naming;
+    requires transitive java.net.http;
     requires transitive java.prefs;
     requires transitive java.rmi;
     requires transitive java.scripting;
@@ -58,6 +56,7 @@ module java.se {
     requires transitive java.security.sasl;
     requires transitive java.sql;
     requires transitive java.sql.rowset;
+    requires transitive java.transaction.xa;
     requires transitive java.xml;
     requires transitive java.xml.crypto;
 }

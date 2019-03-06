@@ -20,8 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.core.test;
 
+import static java.lang.reflect.Modifier.isStatic;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
@@ -40,11 +43,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -133,6 +136,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -561,7 +565,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return a scheduled textual dump of {@code graph} .
      */
     protected static String getScheduledGraphString(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
+        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
         schedule.apply(graph);
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
@@ -880,7 +884,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    private Map<ResolvedJavaMethod, InstalledCode> cache = new HashMap<>();
+    private Map<ResolvedJavaMethod, InstalledCode> cache = new ConcurrentHashMap<>();
 
     /**
      * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
@@ -931,7 +935,8 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     @SuppressWarnings("try")
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
-        if (!forceCompile && graph == null) {
+        boolean useCache = !forceCompile && getArgumentToBind() == null;
+        if (useCache && graph == null) {
             InstalledCode cached = cache.get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
@@ -964,7 +969,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
                         }
                     } catch (BailoutException e) {
-                        if (retry <= BAILOUT_RETRY_LIMIT && graph == null && !e.isPermanent()) {
+                        if (retry < BAILOUT_RETRY_LIMIT && graph == null && !e.isPermanent()) {
                             // retry (if there is no predefined graph)
                             TTY.println(String.format("Restart compilation %s (%s) due to a non-permanent bailout!", installedCodeOwner, id));
                             continue;
@@ -978,7 +983,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 throw debug.handle(e);
             }
 
-            if (!forceCompile) {
+            if (useCache) {
                 cache.put(installedCodeOwner, installedCode);
             }
             return installedCode;
@@ -1051,7 +1056,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         try (DebugContext.Scope s = debug.scope("Compile", graphToCompile)) {
             assert options != null;
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
-                            graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default);
+                            graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, true);
             return GraalCompiler.compile(request);
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1072,7 +1077,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return backend.createDefaultInstalledCode(debug, method, compilationResult);
     }
 
-    private final Map<ResolvedJavaMethod, Executable> methodMap = new HashMap<>();
+    private final Map<ResolvedJavaMethod, Executable> methodMap = new ConcurrentHashMap<>();
 
     /**
      * Converts a reflection {@link Method} to a {@link ResolvedJavaMethod}.
@@ -1243,10 +1248,31 @@ public abstract class GraalCompilerTest extends GraalTest {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope ds = debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
+            Object[] args = getArgumentToBind();
+            if (args != null) {
+                bindArguments(graph, args);
+            }
             return graph;
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    protected void bindArguments(StructuredGraph graph, Object[] argsToBind) {
+        ResolvedJavaMethod m = graph.method();
+        Object receiver = isStatic(m.getModifiers()) ? null : this;
+        Object[] args = argsWithReceiver(receiver, argsToBind);
+        JavaType[] parameterTypes = m.toParameterTypes();
+        assert parameterTypes.length == args.length;
+        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
+            JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), args[param.index()]);
+            ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
+            param.replaceAtUsages(replacement);
+        }
+    }
+
+    protected Object[] getArgumentToBind() {
+        return null;
     }
 
     protected PhaseSuite<HighTierContext> getEagerGraphBuilderSuite() {

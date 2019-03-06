@@ -23,12 +23,14 @@
 
 /**
  * @test
- * @bug 8193125
+ * @bug 8193125 8196623
  * @summary test modifiers with java.base
  * @library /tools/lib
  * @modules
  *      jdk.compiler/com.sun.tools.javac.api
+ *      jdk.compiler/com.sun.tools.javac.jvm
  *      jdk.compiler/com.sun.tools.javac.main
+ *      jdk.compiler/com.sun.tools.javac.platform
  *      jdk.jdeps/com.sun.tools.classfile
  * @build toolbox.ToolBox toolbox.JavacTask
  * @run main JavaBaseTest
@@ -37,10 +39,12 @@
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import com.sun.tools.classfile.Attribute;
 import com.sun.tools.classfile.Attributes;
@@ -48,9 +52,11 @@ import com.sun.tools.classfile.ClassFile;
 import com.sun.tools.classfile.ClassWriter;
 import com.sun.tools.classfile.Module_attribute;
 
+import com.sun.tools.javac.jvm.Target;
+import com.sun.tools.javac.platform.JDKPlatformProvider;
+
 import toolbox.JavacTask;
 import toolbox.Task;
-import toolbox.Task.Expect;
 import toolbox.ToolBox;
 
 public class JavaBaseTest {
@@ -66,11 +72,6 @@ public class JavaBaseTest {
         List.of("static", "transitive")
     );
 
-    final String specVersion = System.getProperty("java.specification.version");
-    final List<String> targets = specVersion.equals("10")
-            ? List.of("9", "10")
-            : List.of("9", "10", specVersion);
-
     enum Mode { SOURCE, CLASS };
 
     ToolBox tb = new ToolBox();
@@ -78,6 +79,14 @@ public class JavaBaseTest {
     int errorCount = 0;
 
     void run() throws Exception {
+        Set<String> targets = new LinkedHashSet<>();
+        StreamSupport.stream(new JDKPlatformProvider().getSupportedPlatformNames()
+                                                      .spliterator(),
+                             false)
+                     .filter(p -> Integer.parseInt(p) >= 9)
+                     .forEach(targets::add);
+        //run without --release:
+        targets.add("current");
         for (List<String> mods : modifiers) {
             for (String target : targets) {
                 for (Mode mode : Mode.values()) {
@@ -121,13 +130,18 @@ public class JavaBaseTest {
         Path modules = Files.createDirectories(base.resolve("modules"));
         boolean expectOK = target.equals("9");
 
-        String log = new JavacTask(tb)
-                .outdir(modules)
-                .options("-XDrawDiagnostics", "--release", target)
-                .files(tb.findJavaFiles(src))
-                .run(expectOK ? Task.Expect.SUCCESS : Task.Expect.FAIL)
-                .writeAll()
-                .getOutput(Task.OutputKind.DIRECT);
+        JavacTask jct = new JavacTask(tb)
+            .outdir(modules);
+
+        if (target.equals("current"))
+            jct.options("-XDrawDiagnostics");
+        else
+            jct.options("-XDrawDiagnostics", "--release", target);
+
+        String log = jct.files(tb.findJavaFiles(src))
+            .run(expectOK ? Task.Expect.SUCCESS : Task.Expect.FAIL)
+            .writeAll()
+            .getOutput(Task.OutputKind.DIRECT);
 
         if (!expectOK) {
             boolean foundErrorMessage = false;
@@ -189,12 +203,15 @@ public class JavaBaseTest {
                 "module m { requires java.base; }");
         Path modules1 = Files.createDirectories(base.resolve("interim-modules"));
 
-        new JavacTask(tb)
-                .outdir(modules1)
-                .options("--release", target)
-                .files(tb.findJavaFiles(src1))
-                .run(Task.Expect.SUCCESS)
-                .writeAll();
+        JavacTask jct = new JavacTask(tb)
+            .outdir(modules1);
+
+        if (!target.equals("current")) {
+            jct.options("--release", target);
+        }
+
+        jct.files(tb.findJavaFiles(src1))
+            .run(Task.Expect.SUCCESS);
 
         ClassFile cf1 = ClassFile.read(modules1.resolve("module-info.class"));
 

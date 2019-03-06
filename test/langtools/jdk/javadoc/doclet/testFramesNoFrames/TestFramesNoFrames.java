@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8162353 8164747 8173707
+ * @bug 8162353 8164747 8173707 8196202 8204303
  * @summary javadoc should provide a way to disable use of frames
  * @library /tools/lib ../lib
  * @modules
@@ -226,6 +226,11 @@ public class TestFramesNoFrames extends JavadocTester {
 
         private boolean frames;
         private boolean overview;
+        private static final String framesWarning
+                = "javadoc: warning - You have specified to generate frames, by using the --frames option.\n"
+                + "The default is currently to not generate frames and the support for \n"
+                + "frames will be removed in a future release.\n"
+                + "To suppress this warning, remove the --frames option and avoid the use of frames.";
 
         Checker(FrameKind fKind, OverviewKind oKind, HtmlKind hKind) {
             this.fKind = fKind;
@@ -240,11 +245,11 @@ public class TestFramesNoFrames extends JavadocTester {
 
         void check() throws IOException {
             switch (fKind) {
-                case DEFAULT:
                 case FRAMES:
                     frames = true;
                     break;
 
+                case DEFAULT:
                 case NO_FRAMES:
                     frames = false;
                     break;
@@ -264,6 +269,9 @@ public class TestFramesNoFrames extends JavadocTester {
                     break;
             }
 
+            out.println("Checker: " + fKind + " " + oKind + " " + hKind
+                + ": frames:" + frames + " overview:" + overview);
+
             checkAllClassesFiles();
             checkFrameFiles();
             checkOverviewSummary();
@@ -271,6 +279,8 @@ public class TestFramesNoFrames extends JavadocTester {
             checkIndex();
             checkNavBar();
             checkHelpDoc();
+
+            checkWarning();
 
         }
 
@@ -301,18 +311,20 @@ public class TestFramesNoFrames extends JavadocTester {
         private void checkFrameFiles() {
             // these files are all only generated in frames mode
 
-            // <module>-frame.html and <module>-type-frame.html files
+            // <module>/module-frame.html and <module>/module-type-frame.html files
             checkFiles(frames, classes.stream()
                 .filter(c -> isInModule(c))
                 .map(c -> modulePart(c))
                 .flatMap(m -> Arrays.asList(
-                        m + "-frame.html",
-                        m + "-type-frame.html").stream())
+                        m + "/module-frame.html",
+                        m + "/module-type-frame.html").stream())
                 .collect(Collectors.toSet()));
 
             // <package>/package-frame.html files
             checkFiles(frames, classes.stream()
-                    .map(c -> packagePart(c) + "/package-frame.html")
+                    .map(c -> (isInModule(c) ? (modulePart(c) + "/") : "")
+                                + packagePart(c)
+                                + "/package-frame.html")
                     .collect(Collectors.toSet()));
         }
 
@@ -360,7 +372,8 @@ public class TestFramesNoFrames extends JavadocTester {
             // contain FRAMES/NO-FRAMES links in frames mode
             List<String> navbarFiles = new ArrayList<>();
             navbarFiles.addAll(classes.stream()
-                    .map(c -> toHtml(packageClassPart(c)))
+                    .map(c -> (isInModule(c) ? (modulePart(c) + "/") : "")
+                                + toHtml(packageClassPart(c)))
                     .collect(Collectors.toSet()));
             for (String f : navbarFiles) {
                 checkOutput(f, frames,
@@ -370,10 +383,23 @@ public class TestFramesNoFrames extends JavadocTester {
         }
 
         private void checkOverviewSummary() {
-            // the overview-summary.html file only appears if
-            // in frames mode and (overview requested or multiple packages)
-            checkFiles(frames && overview,
+            // To accommodate the historical behavior of generating
+            // overview-summary.html in frames mode, the file
+            // will still be generated in no-frames mode,
+            // but will be a redirect to index.html
+            checkFiles(overview,
                     "overview-summary.html");
+            if (overview) {
+                checkOutput("overview-summary.html",  !frames,
+                        "<link rel=\"canonical\" href=\"index.html\">",
+                        "<script type=\"text/javascript\">window.location.replace('index.html')</script>",
+                        "<meta http-equiv=\"Refresh\" content=\"0;index.html\">",
+                        "<p><a href=\"index.html\">index.html</a></p>");
+            }
+        }
+
+        private void checkWarning() {
+            checkOutput(Output.OUT, frames, framesWarning);
         }
 
         private long getPackageCount() {

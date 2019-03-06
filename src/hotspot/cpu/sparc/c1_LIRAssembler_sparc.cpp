@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "asm/macroAssembler.inline.hpp"
 #include "c1/c1_Compilation.hpp"
 #include "c1/c1_LIRAssembler.hpp"
 #include "c1/c1_MacroAssembler.hpp"
@@ -31,10 +32,13 @@
 #include "ci/ciArrayKlass.hpp"
 #include "ci/ciInstance.hpp"
 #include "gc/shared/barrierSet.hpp"
-#include "gc/shared/cardTableModRefBS.hpp"
+#include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "nativeInst_sparc.hpp"
 #include "oops/objArrayKlass.hpp"
+#include "runtime/frame.inline.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
+#include "runtime/jniHandles.inline.hpp"
 #include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 
@@ -991,8 +995,8 @@ void LIR_Assembler::const2mem(LIR_Opr src, LIR_Opr dest, BasicType type, CodeEmi
   int offset = -1;
 
   switch (c->type()) {
+    case T_FLOAT: type = T_INT; // Float constants are stored by int store instructions.
     case T_INT:
-    case T_FLOAT:
     case T_ADDRESS: {
       LIR_Opr tmp = FrameMap::O7_opr;
       int value = c->as_jint_bits();
@@ -1202,6 +1206,7 @@ void LIR_Assembler::stack2stack(LIR_Opr src, LIR_Opr dest, BasicType type) {
       __ stw(tmp, to.base(), to.disp());
       break;
     }
+    case T_ADDRESS:
     case T_OBJECT: {
       Register tmp = O7;
       Address from = frame_map()->address_for_slot(src->single_stack_ix());
@@ -1354,7 +1359,6 @@ void LIR_Assembler::reg2reg(LIR_Opr from_reg, LIR_Opr to_reg) {
     __ verify_oop(to_reg->as_register());
   }
 }
-
 
 void LIR_Assembler::reg2mem(LIR_Opr from_reg, LIR_Opr dest, BasicType type,
                             LIR_PatchCode patch_code, CodeEmitInfo* info, bool pop_fpu_stack,
@@ -1877,29 +1881,21 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
     __ mov(dst_pos, O3);
     __ mov(length,  O4);
     address copyfunc_addr = StubRoutines::generic_arraycopy();
+    assert(copyfunc_addr != NULL, "generic arraycopy stub required");
 
-    if (copyfunc_addr == NULL) { // Use C version if stub was not generated
-      __ call_VM_leaf(tmp, CAST_FROM_FN_PTR(address, Runtime1::arraycopy));
-    } else {
 #ifndef PRODUCT
-      if (PrintC1Statistics) {
-        address counter = (address)&Runtime1::_generic_arraycopystub_cnt;
-        __ inc_counter(counter, G1, G3);
-      }
+    if (PrintC1Statistics) {
+      address counter = (address)&Runtime1::_generic_arraycopystub_cnt;
+      __ inc_counter(counter, G1, G3);
+    }
 #endif
-      __ call_VM_leaf(tmp, copyfunc_addr);
-    }
+    __ call_VM_leaf(tmp, copyfunc_addr);
 
-    if (copyfunc_addr != NULL) {
-      __ xor3(O0, -1, tmp);
-      __ sub(length, tmp, length);
-      __ add(src_pos, tmp, src_pos);
-      __ cmp_zero_and_br(Assembler::less, O0, *stub->entry());
-      __ delayed()->add(dst_pos, tmp, dst_pos);
-    } else {
-      __ cmp_zero_and_br(Assembler::less, O0, *stub->entry());
-      __ delayed()->nop();
-    }
+    __ xor3(O0, -1, tmp);
+    __ sub(length, tmp, length);
+    __ add(src_pos, tmp, src_pos);
+    __ cmp_zero_and_br(Assembler::less, O0, *stub->entry());
+    __ delayed()->add(dst_pos, tmp, dst_pos);
     __ bind(*stub->continuation());
     return;
   }
@@ -2265,10 +2261,10 @@ void LIR_Assembler::emit_alloc_obj(LIR_OpAllocObj* op) {
          op->obj()->as_register()   == O0 &&
          op->klass()->as_register() == G5, "must be");
   if (op->init_check()) {
+    add_debug_info_for_null_check_here(op->stub()->info());
     __ ldub(op->klass()->as_register(),
           in_bytes(InstanceKlass::init_state_offset()),
           op->tmp1()->as_register());
-    add_debug_info_for_null_check_here(op->stub()->info());
     __ cmp(op->tmp1()->as_register(), InstanceKlass::fully_initialized);
     __ br(Assembler::notEqual, false, Assembler::pn, *op->stub()->entry());
     __ delayed()->nop();
@@ -2761,7 +2757,7 @@ void LIR_Assembler::emit_profile_call(LIR_OpProfileCall* op) {
   ciMethodData* md = method->method_data_or_null();
   assert(md != NULL, "Sanity");
   ciProfileData* data = md->bci_to_data(bci);
-  assert(data->is_CounterData(), "need CounterData for calls");
+  assert(data != NULL && data->is_CounterData(), "need CounterData for calls");
   assert(op->mdo()->is_single_cpu(),  "mdo must be allocated");
   Register mdo  = op->mdo()->as_register();
   assert(op->tmp1()->is_double_cpu(), "tmp1 must be allocated");
@@ -3200,29 +3196,44 @@ void LIR_Assembler::unpack64(LIR_Opr src, LIR_Opr dst) {
   __ srl (rs,  0, rd->successor());
 }
 
-void LIR_Assembler::leal(LIR_Opr addr_opr, LIR_Opr dest) {
+void LIR_Assembler::leal(LIR_Opr addr_opr, LIR_Opr dest, LIR_PatchCode patch_code, CodeEmitInfo* info) {
   const LIR_Address* addr = addr_opr->as_address_ptr();
   assert(addr->scale() == LIR_Address::times_1, "can't handle complex addresses yet");
   const Register dest_reg = dest->as_pointer_register();
   const Register base_reg = addr->base()->as_pointer_register();
 
-  if (Assembler::is_simm13(addr->disp())) {
-    if (addr->index()->is_valid()) {
-      const Register index_reg = addr->index()->as_pointer_register();
-      assert(index_reg != G3_scratch, "invariant");
-      __ add(base_reg, addr->disp(), G3_scratch);
-      __ add(index_reg, G3_scratch, dest_reg);
-    } else {
-      __ add(base_reg, addr->disp(), dest_reg);
-    }
-  } else {
-    __ set(addr->disp(), G3_scratch);
+  if (patch_code != lir_patch_none) {
+    PatchingStub* patch = new PatchingStub(_masm, PatchingStub::access_field_id);
+    assert(addr->disp() != 0, "must have");
+    assert(base_reg != G3_scratch, "invariant");
+    __ patchable_set(0, G3_scratch);
+    patching_epilog(patch, patch_code, base_reg, info);
+    assert(dest_reg != G3_scratch, "invariant");
     if (addr->index()->is_valid()) {
       const Register index_reg = addr->index()->as_pointer_register();
       assert(index_reg != G3_scratch, "invariant");
       __ add(index_reg, G3_scratch, G3_scratch);
     }
     __ add(base_reg, G3_scratch, dest_reg);
+  } else {
+    if (Assembler::is_simm13(addr->disp())) {
+      if (addr->index()->is_valid()) {
+        const Register index_reg = addr->index()->as_pointer_register();
+        assert(index_reg != G3_scratch, "invariant");
+        __ add(base_reg, addr->disp(), G3_scratch);
+        __ add(index_reg, G3_scratch, dest_reg);
+      } else {
+        __ add(base_reg, addr->disp(), dest_reg);
+      }
+    } else {
+      __ set(addr->disp(), G3_scratch);
+      if (addr->index()->is_valid()) {
+        const Register index_reg = addr->index()->as_pointer_register();
+        assert(index_reg != G3_scratch, "invariant");
+        __ add(index_reg, G3_scratch, G3_scratch);
+      }
+      __ add(base_reg, G3_scratch, dest_reg);
+    }
   }
 }
 

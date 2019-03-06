@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.replacements.test;
 
 import java.lang.reflect.InvocationTargetException;
@@ -109,7 +111,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1);
+        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null);
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClass);
         }

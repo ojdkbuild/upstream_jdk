@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.graph;
 
 import java.util.Arrays;
@@ -157,6 +159,12 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
         }
         for (int i = 0; i < Math.min(bits.length, other.bits.length); i++) {
             bits[i] |= other.bits[i];
+        }
+    }
+
+    public void invert() {
+        for (int i = 0; i < bits.length; i++) {
+            bits[i] = ~bits[i];
         }
     }
 

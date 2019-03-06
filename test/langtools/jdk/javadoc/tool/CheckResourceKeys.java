@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,7 +117,7 @@ public class CheckResourceKeys {
     }
 
     void usageTests(boolean xflag) {
-        String[] argarray = { xflag ? "-X" : "-help" };
+        String[] argarray = { xflag ? "-X" : "--help" };
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         if (jdk.javadoc.internal.tool.Main.execute(argarray, pw) == 0) {
@@ -167,6 +167,9 @@ public class CheckResourceKeys {
                 continue;
             // ignore this partial key, tested by usageTests
             if (ck.equals("main.opt."))
+                continue;
+            // ignore this system property name
+            if (ck.equals("javadoc.internal.show.taglets"))
                 continue;
             if (resourceKeys.contains(ck))
                 continue;

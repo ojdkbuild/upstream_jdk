@@ -26,11 +26,12 @@
  * @key gc
  * @bug 8025166
  * @summary Verify that heap devided among generations according to NewRatio
+ * @requires vm.gc != "Z"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver TestNewRatioFlag
  */
 

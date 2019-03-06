@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes;
 
 import static jdk.vm.ci.code.BytecodeFrame.getPlaceholderBciName;
@@ -244,7 +246,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         if (fs == null) {
             return null;
         }
-        return new NodeSourcePosition(null, toSourcePosition(fs.outerFrameState()), fs.code.getMethod(), fs.bci);
+        return new NodeSourcePosition(toSourcePosition(fs.outerFrameState()), fs.code.getMethod(), fs.bci);
     }
 
     /**

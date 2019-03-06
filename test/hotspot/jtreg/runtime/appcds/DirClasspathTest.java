@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,8 @@
 
 /*
  * @test
- * @summary AppCDS handling of directories in -cp
- * AppCDS does not support uncompressed oops
- * @requires (vm.opt.UseCompressedOops == null) | (vm.opt.UseCompressedOops == true)
+ * @summary Handling of directories in -cp is based on the classlist
+ * @requires vm.cds
  * @library /test/lib
  * @run main DirClasspathTest
  */
@@ -34,25 +33,68 @@
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.OutputAnalyzer;
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class DirClasspathTest {
+    private static final int MAX_PATH = 260;
+
     public static void main(String[] args) throws Exception {
         File dir = new File(System.getProperty("user.dir"));
         File emptydir = new File(dir, "emptydir");
         emptydir.mkdir();
 
+        /////////////////////////////////////////////////////////////////
+        // The classlist only contains boot class in following test cases
+        /////////////////////////////////////////////////////////////////
+        String bootClassList[] = {"java/lang/Object"};
+
         // Empty dir in -cp: should be OK
         OutputAnalyzer output;
-        if (!Platform.isWindows()) {
-            // This block fails on Windows because of JDK-8192927
-            output = TestCommon.dump(emptydir.getPath(), TestCommon.list("DoesntMatter"), "-Xlog:class+path=info");
-            TestCommon.checkDump(output);
-        }
+        output = TestCommon.dump(emptydir.getPath(), bootClassList, "-Xlog:class+path=info");
+        TestCommon.checkDump(output);
 
-        // Non-empty dir in -cp: should fail
+        // Long path to empty dir in -cp: should be OK
+        Path classDir = Paths.get(System.getProperty("test.classes"));
+        Path destDir = classDir;
+        int subDirLen = MAX_PATH - classDir.toString().length() - 2;
+        if (subDirLen > 0) {
+            char[] chars = new char[subDirLen];
+            Arrays.fill(chars, 'x');
+            String subPath = new String(chars);
+            destDir = Paths.get(System.getProperty("test.classes"), subPath);
+        }
+        File longDir = destDir.toFile();
+        longDir.mkdir();
+        File subDir = new File(longDir, "subdir");
+        subDir.mkdir();
+        output = TestCommon.dump(subDir.getPath(), bootClassList, "-Xlog:class+path=info");
+        TestCommon.checkDump(output);
+
+        // Non-empty dir in -cp: should be OK
         // <dir> is not empty because it has at least one subdirectory, i.e., <emptydir>
-        output = TestCommon.dump(dir.getPath(), TestCommon.list("DoesntMatter"), "-Xlog:class+path=info");
+        output = TestCommon.dump(dir.getPath(), bootClassList, "-Xlog:class+path=info");
+        TestCommon.checkDump(output);
+
+        // Long path to non-empty dir in -cp: should be OK
+        // <dir> is not empty because it has at least one subdirectory, i.e., <emptydir>
+        output = TestCommon.dump(longDir.getPath(), bootClassList, "-Xlog:class+path=info");
+        TestCommon.checkDump(output);
+
+        /////////////////////////////////////////////////////////////////
+        // The classlist contains non-boot class in following test cases
+        /////////////////////////////////////////////////////////////////
+        String appClassList[] = {"java/lang/Object", "com/sun/tools/javac/Main"};
+
+        // Non-empty dir in -cp: should report error
+        output = TestCommon.dump(dir.getPath(), appClassList, "-Xlog:class+path=info");
         output.shouldNotHaveExitValue(0);
-        output.shouldContain("CDS allows only empty directories in archived classpaths");
+        output.shouldContain("Cannot have non-empty directory in paths");
+
+        // Long path to non-empty dir in -cp: should report error
+        output = TestCommon.dump(longDir.getPath(), appClassList, "-Xlog:class+path=info");
+        output.shouldNotHaveExitValue(0);
+        output.shouldContain("Cannot have non-empty directory in paths");
     }
 }

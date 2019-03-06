@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -60,6 +62,7 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
         crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
         // This must be emitted exactly like this to ensure it's patchable
         masm.movq(AMD64.rax, config.nonOopBits);
-        super.emitCode(crb, masm);
+        int offset = super.emitCall(crb, masm);
+        crb.recordInvokeVirtualOrInterfaceCallOp(offset, getPosition());
     }
 }

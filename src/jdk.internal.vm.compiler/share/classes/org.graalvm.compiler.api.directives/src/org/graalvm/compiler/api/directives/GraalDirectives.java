@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.api.directives;
 
 // JaCoCo Exclude
@@ -47,6 +49,13 @@ public final class GraalDirectives {
      * the compiled code and reprofile the method.
      */
     public static void deoptimizeAndInvalidate() {
+    }
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point, invalidate
+     * the compiled code, record a speculation and reprofile the method.
+     */
+    public static void deoptimizeAndInvalidateWithSpeculation() {
     }
 
     /**

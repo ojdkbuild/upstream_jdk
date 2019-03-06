@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,12 @@
 package sun.tools.jar;
 
 import java.io.File;
-import java.io.PrintStream;
 import java.io.PrintWriter;
-import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleDescriptor.Version;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-
 import jdk.internal.module.ModulePath;
 import jdk.internal.module.ModuleResolution;
 
@@ -200,7 +197,7 @@ class GNUStyleOptions {
             },
 
             // Other options
-            new Option(true, true, OptionType.OTHER, "--help", "-h") {
+            new Option(true, true, OptionType.OTHER, "--help", "-h", "-?") {
                 void process(Main jartool, String opt, String arg) throws BadArgs {
                     if (jartool.info == null) {
                         if (arg == null) {
@@ -292,6 +289,10 @@ class GNUStyleOptions {
                 break;
 
             String name = args[count];
+            if (name.equals("-XDsuppress-tool-removal-message")) {
+                jartool.suppressDeprecateMsg = true;
+                continue;
+            }
             Option option = getOption(name);
             String param = null;
             if (option.hasArg) {

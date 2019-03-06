@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,13 @@
 #define SHARE_VM_CLASSFILE_SYSTEMDICTIONARY_HPP
 
 #include "classfile/classLoader.hpp"
-#include "classfile/systemDictionary_ext.hpp"
 #include "jvmci/systemDictionary_jvmci.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/symbol.hpp"
 #include "runtime/java.hpp"
 #include "runtime/reflectionUtils.hpp"
+#include "runtime/signature.hpp"
 #include "utilities/hashtable.hpp"
-#include "utilities/hashtable.inline.hpp"
 
 // The dictionary in each ClassLoaderData stores all loaded classes, either
 // initiatied by its class loader or defined by its class loader:
@@ -84,6 +83,7 @@ class SymbolPropertyTable;
 class ProtectionDomainCacheTable;
 class ProtectionDomainCacheEntry;
 class GCTimer;
+class OopStorage;
 
 // Certain classes are preloaded, such as java.lang.Object and java.lang.String.
 // They are all "well-known", in the sense that no class loader is allowed
@@ -173,6 +173,7 @@ class GCTimer;
   do_klass(VolatileCallSite_klass,                      java_lang_invoke_VolatileCallSite,         Pre                 ) \
   /* Note: MethodHandle must be first, and VolatileCallSite last in group */                                             \
                                                                                                                          \
+  do_klass(AssertionStatusDirectives_klass,             java_lang_AssertionStatusDirectives,       Pre                 ) \
   do_klass(StringBuffer_klass,                          java_lang_StringBuffer,                    Pre                 ) \
   do_klass(StringBuilder_klass,                         java_lang_StringBuilder,                   Pre                 ) \
   do_klass(internal_Unsafe_klass,                       jdk_internal_misc_Unsafe,                  Pre                 ) \
@@ -180,13 +181,12 @@ class GCTimer;
                                                                                                                          \
   /* support for CDS */                                                                                                  \
   do_klass(ByteArrayInputStream_klass,                  java_io_ByteArrayInputStream,              Pre                 ) \
-  do_klass(File_klass,                                  java_io_File,                              Pre                 ) \
   do_klass(URL_klass,                                   java_net_URL,                              Pre                 ) \
   do_klass(Jar_Manifest_klass,                          java_util_jar_Manifest,                    Pre                 ) \
+  do_klass(jdk_internal_loader_ClassLoaders_klass,      jdk_internal_loader_ClassLoaders,          Pre                 ) \
   do_klass(jdk_internal_loader_ClassLoaders_AppClassLoader_klass,      jdk_internal_loader_ClassLoaders_AppClassLoader,       Pre ) \
   do_klass(jdk_internal_loader_ClassLoaders_PlatformClassLoader_klass, jdk_internal_loader_ClassLoaders_PlatformClassLoader,  Pre ) \
   do_klass(CodeSource_klass,                            java_security_CodeSource,                  Pre                 ) \
-  do_klass(ParseUtil_klass,                             sun_net_www_ParseUtil,                     Pre                 ) \
                                                                                                                          \
   do_klass(StackTraceElement_klass,                     java_lang_StackTraceElement,               Opt                 ) \
                                                                                                                          \
@@ -199,6 +199,9 @@ class GCTimer;
   do_klass(StackFrameInfo_klass,                        java_lang_StackFrameInfo,                  Opt                 ) \
   do_klass(LiveStackFrameInfo_klass,                    java_lang_LiveStackFrameInfo,              Opt                 ) \
                                                                                                                          \
+  /* support for stack dump lock analysis */                                                                             \
+  do_klass(java_util_concurrent_locks_AbstractOwnableSynchronizer_klass, java_util_concurrent_locks_AbstractOwnableSynchronizer, Pre ) \
+                                                                                                                         \
   /* Preload boxing klasses */                                                                                           \
   do_klass(Boolean_klass,                               java_lang_Boolean,                         Pre                 ) \
   do_klass(Character_klass,                             java_lang_Character,                       Pre                 ) \
@@ -209,8 +212,6 @@ class GCTimer;
   do_klass(Integer_klass,                               java_lang_Integer,                         Pre                 ) \
   do_klass(Long_klass,                                  java_lang_Long,                            Pre                 ) \
                                                                                                                          \
-  /* Extensions */                                                                                                       \
-  WK_KLASSES_DO_EXT(do_klass)                                                                                            \
   /* JVMCI classes. These are loaded on-demand. */                                                                       \
   JVMCI_WK_KLASSES_DO(do_klass)                                                                                          \
                                                                                                                          \
@@ -220,7 +221,6 @@ class GCTimer;
 class SystemDictionary : AllStatic {
   friend class VMStructs;
   friend class SystemDictionaryHandles;
-  friend class SharedClassUtil;
 
  public:
   enum WKID {
@@ -360,14 +360,9 @@ public:
 
   // Garbage collection support
 
-  // This method applies "blk->do_oop" to all the pointers to "system"
-  // classes and loaders.
-  static void always_strong_oops_do(OopClosure* blk);
-
   // Unload (that is, break root links to) all unmarked classes and
   // loaders.  Returns "true" iff something was unloaded.
-  static bool do_unloading(BoolObjectClosure* is_alive,
-                           GCTimer* gc_timer,
+  static bool do_unloading(GCTimer* gc_timer,
                            bool do_cleaning = true);
 
   // Used by DumpSharedSpaces only to remove classes that failed verification
@@ -377,7 +372,6 @@ public:
 
   // Applies "f->do_oop" to all root oops in the system dictionary.
   static void oops_do(OopClosure* f);
-  static void roots_oops_do(OopClosure* strong, OopClosure* weak);
 
   // System loader lock
   static oop system_loader_lock()           { return _system_loader_lock_obj; }
@@ -458,16 +452,7 @@ public:
   }
   static BasicType box_klass_type(Klass* k);  // inverse of box_klass
 
-  // methods returning lazily loaded klasses
-  // The corresponding method to load the class must be called before calling them.
-  static InstanceKlass* abstract_ownable_synchronizer_klass() { return check_klass(_abstract_ownable_synchronizer_klass); }
-
-  static void load_abstract_ownable_synchronizer_klass(TRAPS);
-
 protected:
-  // Tells whether ClassLoader.loadClassInternal is present
-  static bool has_loadClassInternal()       { return _has_loadClassInternal; }
-
   // Returns the class loader data to be used when looking up/updating the
   // system dictionary.
   static ClassLoaderData *class_loader_data(Handle class_loader) {
@@ -494,7 +479,7 @@ public:
   static void compute_java_loaders(TRAPS);
 
   // Register a new class loader
-  static ClassLoaderData* register_loader(Handle class_loader, TRAPS);
+  static ClassLoaderData* register_loader(Handle class_loader);
 protected:
   // Mirrors for primitive classes (created eagerly)
   static oop check_mirror(oop m) {
@@ -526,6 +511,28 @@ public:
   static methodHandle find_method_handle_intrinsic(vmIntrinsics::ID iid,
                                                    Symbol* signature,
                                                    TRAPS);
+
+  // compute java_mirror (java.lang.Class instance) for a type ("I", "[[B", "LFoo;", etc.)
+  // Either the accessing_klass or the CL/PD can be non-null, but not both.
+  static Handle    find_java_mirror_for_type(Symbol* signature,
+                                             Klass* accessing_klass,
+                                             Handle class_loader,
+                                             Handle protection_domain,
+                                             SignatureStream::FailureMode failure_mode,
+                                             TRAPS);
+  static Handle    find_java_mirror_for_type(Symbol* signature,
+                                             Klass* accessing_klass,
+                                             SignatureStream::FailureMode failure_mode,
+                                             TRAPS) {
+    // callee will fill in CL/PD from AK, if they are needed
+    return find_java_mirror_for_type(signature, accessing_klass, Handle(), Handle(),
+                                     failure_mode, THREAD);
+  }
+
+
+  // fast short-cut for the one-character case:
+  static oop       find_java_mirror_for_type(char signature_char);
+
   // find a java.lang.invoke.MethodType object for a given signature
   // (asks Java to compute it if necessary, except in a compiler thread)
   static Handle    find_method_handle_type(Symbol* signature,
@@ -545,18 +552,23 @@ public:
                                                Symbol* signature,
                                                TRAPS);
 
+  // ask Java to compute a constant by invoking a BSM given a Dynamic_info CP entry
+  static Handle    link_dynamic_constant(Klass* caller,
+                                         int condy_index,
+                                         Handle bootstrap_specifier,
+                                         Symbol* name,
+                                         Symbol* type,
+                                         TRAPS);
+
   // ask Java to create a dynamic call site, while linking an invokedynamic op
   static methodHandle find_dynamic_call_site_invoker(Klass* caller,
+                                                     int indy_index,
                                                      Handle bootstrap_method,
                                                      Symbol* name,
                                                      Symbol* type,
                                                      Handle *appendix_result,
                                                      Handle *method_type_result,
                                                      TRAPS);
-
-  // Utility for printing loader "name" as part of tracing constraints
-  static const char* loader_name(const oop loader);
-  static const char* loader_name(const ClassLoaderData* loader_data);
 
   // Record the error when the first attempt to resolve a reference from a constant
   // pool entry to a class fails.
@@ -608,6 +620,9 @@ public:
   // ProtectionDomain cache
   static ProtectionDomainCacheTable*   _pd_cache_table;
 
+  // VM weak OopStorage object.
+  static OopStorage*             _vm_weak_oop_storage;
+
 protected:
   static void validate_protection_domain(InstanceKlass* klass,
                                          Handle class_loader,
@@ -654,6 +669,15 @@ public:
   static bool is_platform_class_loader(oop class_loader);
   static void clear_invoke_method_table();
 
+  // Returns TRUE if the method is a non-public member of class java.lang.Object.
+  static bool is_nonpublic_Object_method(Method* m) {
+    assert(m != NULL, "Unexpected NULL Method*");
+    return !m->is_public() && m->method_holder() == SystemDictionary::Object_klass();
+  }
+
+  static void initialize_oop_storage();
+  static OopStorage* vm_weak_oop_storage();
+
 protected:
   static InstanceKlass* find_shared_class(Symbol* class_name);
 
@@ -698,16 +722,13 @@ protected:
   // Variables holding commonly used klasses (preloaded)
   static InstanceKlass* _well_known_klasses[];
 
-  // Lazily loaded klasses
-  static InstanceKlass* volatile _abstract_ownable_synchronizer_klass;
-
   // table of box klasses (int_klass, etc.)
   static InstanceKlass* _box_klasses[T_VOID+1];
 
+private:
   static oop  _java_system_loader;
   static oop  _java_platform_loader;
 
-  static bool _has_loadClassInternal;
   static bool _has_checkPackageAccess;
 };
 

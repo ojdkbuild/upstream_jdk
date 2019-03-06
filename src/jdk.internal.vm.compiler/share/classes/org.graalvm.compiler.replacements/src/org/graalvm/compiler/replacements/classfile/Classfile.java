@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.replacements.classfile;
 
 import java.io.DataInputStream;
@@ -46,8 +48,8 @@ public class Classfile {
     private final ResolvedJavaType type;
     private final List<ClassfileBytecode> codeAttributes;
 
-    private static final int MAJOR_VERSION_JAVA7 = 51;
-    private static final int MAJOR_VERSION_JAVA10 = 54;
+    private static final int MAJOR_VERSION_JAVA_MIN = 51; // JDK7
+    private static final int MAJOR_VERSION_JAVA_MAX = 55; // JDK11
     private static final int MAGIC = 0xCAFEBABE;
 
     /**
@@ -65,7 +67,7 @@ public class Classfile {
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();
-        if (major < MAJOR_VERSION_JAVA7 || major > MAJOR_VERSION_JAVA10) {
+        if (major < MAJOR_VERSION_JAVA_MIN || major > MAJOR_VERSION_JAVA_MAX) {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + major + "." + minor);
         }
 

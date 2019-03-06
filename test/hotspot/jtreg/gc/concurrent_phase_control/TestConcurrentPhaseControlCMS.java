@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,13 @@
 /*
  * @test TestConcurrentPhaseControlCMS
  * @bug 8169517
- * @requires vm.gc.ConcMarkSweep
+ * @requires vm.gc.ConcMarkSweep & !vm.graal.enabled
  * @summary Verify CMS GC doesn't support WhiteBox concurrent phase control.
  * @key gc
  * @modules java.base
  * @library /test/lib /
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *    sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main/othervm -XX:+UseConcMarkSweepGC
  *   -Xbootclasspath/a:.

@@ -25,11 +25,12 @@
  * @test TestSurvivorRatioFlag
  * @key gc
  * @summary Verify that actual survivor ratio is equal to specified SurvivorRatio value
+ * @requires vm.gc != "Z"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver TestSurvivorRatioFlag
  */
 

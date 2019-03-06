@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,8 @@
 package sun.nio.fs;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
+import jdk.internal.util.StaticProperty;
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -46,8 +46,7 @@ public class MacOSXFileSystemProvider extends BsdFileSystemProvider {
 
     @Override
     FileTypeDetector getFileTypeDetector() {
-        Path userMimeTypes = Paths.get(GetPropertyAction
-                .privilegedGetProperty("user.home"), ".mime.types");
+        Path userMimeTypes = Path.of(StaticProperty.userHome(), ".mime.types");
 
         return chain(new MimeTypesFileTypeDetector(userMimeTypes),
                      new UTIFileTypeDetector());

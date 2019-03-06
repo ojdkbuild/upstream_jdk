@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,14 +39,15 @@ int getAddrsFromAdapter(IP_ADAPTER_ADDRESSES *ptr, netaddr **netaddrPP);
 #ifdef DEBUG
 void printnif (netif *nif) {
 #ifdef _WIN64
-        printf ("nif:0x%I64x name:%s\n", nif,nif->name);
+        printf ("nif:0x%I64x name:%s\n", (UINT_PTR)nif, nif->name);
 #else
-        printf ("nif:0x%x name:%s\n", nif,nif->name);
+        printf ("nif:0x%x name:%s\n", nif, nif->name);
 #endif
         if (nif->dNameIsUnicode) {
-            printf ("dName:%S index:%d ", nif->displayName,nif->index);
+            printf ("dName:%S index:%d ", (unsigned short *)nif->displayName,
+                nif->index);
         } else {
-            printf ("dName:%s index:%d ", nif->displayName,nif->index);
+            printf ("dName:%s index:%d ", nif->displayName, nif->index);
         }
         printf ("naddrs:%d\n", nif->naddrs);
 }
@@ -74,13 +75,7 @@ static int getAdapters (JNIEnv *env, IP_ADAPTER_ADDRESSES **adapters) {
     DWORD ret, flags;
     IP_ADAPTER_ADDRESSES *adapterInfo;
     ULONG len;
-    char *error_msg_buf = NULL;
-    size_t error_msg_buf_size =
-            strlen("IP Helper Library GetAdaptersAddresses function failed"
-                   " with error == ") + 10;
-    int _ret = 0;
     int try;
-
 
     adapterInfo = (IP_ADAPTER_ADDRESSES *) malloc(BUFF_SIZE);
     if (adapterInfo == NULL) {
@@ -125,21 +120,16 @@ static int getAdapters (JNIEnv *env, IP_ADAPTER_ADDRESSES **adapters) {
                 "IP Helper Library GetAdaptersAddresses function failed "
                 "with ERROR_ADDRESS_NOT_ASSOCIATED");
         } else {
-            error_msg_buf = (char *)malloc(error_msg_buf_size);
-            if (error_msg_buf != NULL) {
-                memset(error_msg_buf, 0, error_msg_buf_size);
-                _ret = _snprintf_s(error_msg_buf, error_msg_buf_size,
-                    _TRUNCATE, "IP Helper Library GetAdaptersAddresses "
-                                "function failed with error == %d", ret);
-                if (_ret != -1) {
-                    JNU_ThrowByName(env, "java/lang/Error", error_msg_buf);
-                } else {
-                    JNU_ThrowByName(env, "java/lang/Error",
-                        "IP Helper Library GetAdaptersAddresses function failure");
-                }
+            char error_msg_buf[100];
+            int _sr;
+            _sr = _snprintf_s(error_msg_buf, sizeof(error_msg_buf),
+                _TRUNCATE, "IP Helper Library GetAdaptersAddresses "
+                            "function failed with error == %d", ret);
+            if (_sr != -1) {
+                JNU_ThrowByName(env, "java/lang/Error", error_msg_buf);
             } else {
                 JNU_ThrowByName(env, "java/lang/Error",
-                    "IP Helper Library GetAdaptersAddresses function failed");
+                    "IP Helper Library GetAdaptersAddresses function failure");
             }
         }
         return -1;
@@ -157,10 +147,6 @@ IP_ADAPTER_ADDRESSES *getAdapter (JNIEnv *env,  jint index) {
     DWORD flags, val;
     IP_ADAPTER_ADDRESSES *adapterInfo, *ptr, *ret;
     ULONG len;
-    char *error_msg_buf = NULL;
-    size_t error_msg_buf_size =
-        strlen("IP Helper Library GetAdaptersAddresses function failed with error == ") + 10;
-    int _ret = 0;
     int try;
     adapterInfo = (IP_ADAPTER_ADDRESSES *) malloc(BUFF_SIZE);
     if (adapterInfo == NULL) {
@@ -203,21 +189,16 @@ IP_ADAPTER_ADDRESSES *getAdapter (JNIEnv *env,  jint index) {
                 "IP Helper Library GetAdaptersAddresses function failed "
                 "with ERROR_ADDRESS_NOT_ASSOCIATED");
         } else {
-            error_msg_buf = (char *)malloc(error_msg_buf_size);
-            if (error_msg_buf != NULL) {
-                memset(error_msg_buf, 0, error_msg_buf_size);
-                _ret = _snprintf_s(error_msg_buf, error_msg_buf_size,
-                    _TRUNCATE, "IP Helper Library GetAdaptersAddresses function failed "
-                               "with error == %d", val);
-                if (_ret != -1) {
-                    JNU_ThrowByName(env, "java/lang/Error", error_msg_buf);
-                } else {
-                    JNU_ThrowByName(env, "java/lang/Error",
-                        "IP Helper Library GetAdaptersAddresses function failure");
-                }
+            char error_msg_buf[100];
+            int _sr;
+            _sr = _snprintf_s(error_msg_buf, sizeof(error_msg_buf),
+                _TRUNCATE, "IP Helper Library GetAdaptersAddresses function failed "
+                           "with error == %d", val);
+            if (_sr != -1) {
+                JNU_ThrowByName(env, "java/lang/Error", error_msg_buf);
             } else {
                 JNU_ThrowByName(env, "java/lang/Error",
-                    "IP Helper Library GetAdaptersAddresses function failed");
+                    "IP Helper Library GetAdaptersAddresses function failure");
             }
         }
         return NULL;

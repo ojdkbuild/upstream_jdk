@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
 import java.util.Iterator;
@@ -100,9 +102,9 @@ public interface JavaLangAccess {
     <E extends Enum<E>> E[] getEnumConstantsShared(Class<E> klass);
 
     /**
-     * Set thread's blocker field.
+     * Set current thread's blocker field.
      */
-    void blockedOn(Thread t, Interruptible b);
+    void blockedOn(Interruptible b);
 
     /**
      * Registers a shutdown hook.
@@ -254,6 +256,36 @@ public interface JavaLangAccess {
      * given class loader.
      */
     Stream<ModuleLayer> layers(ClassLoader loader);
+
+    /**
+     * Constructs a new {@code String} by decoding the specified subarray of
+     * bytes using the specified {@linkplain java.nio.charset.Charset charset}.
+     *
+     * The caller of this method shall relinquish and transfer the ownership of
+     * the byte array to the callee since the later will not make a copy.
+     *
+     * @param bytes the byte array source
+     * @param cs the Charset
+     * @return the newly created string
+     * @throws CharacterCodingException for malformed or unmappable bytes
+     */
+    String newStringNoRepl(byte[] bytes, Charset cs) throws CharacterCodingException;
+
+    /**
+     * Encode the given string into a sequence of bytes using the specified Charset.
+     *
+     * This method avoids copying the String's internal representation if the input
+     * is ASCII.
+     *
+     * This method throws CharacterCodingException instead of replacing when
+     * malformed input or unmappable characters are encountered.
+     *
+     * @param s the string to encode
+     * @param cs the charset
+     * @return the encoded bytes
+     * @throws CharacterCodingException for malformed input or unmappable characters
+     */
+    byte[] getBytesNoRepl(String s, Charset cs) throws CharacterCodingException;
 
     /**
      * Returns a new string by decoding from the given utf8 bytes array.

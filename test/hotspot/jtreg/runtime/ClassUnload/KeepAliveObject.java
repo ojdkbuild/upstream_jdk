@@ -24,11 +24,12 @@
 /*
  * @test KeepAliveObject
  * @summary This test case uses a class instance to keep the class alive.
+ * @requires vm.opt.final.ClassUnloading
  * @modules java.base/jdk.internal.misc
  * @library /test/lib /runtime/testlibrary
  * @library classes
  * @build sun.hotspot.WhiteBox test.Empty
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main/othervm -Xbootclasspath/a:. -Xmn8m -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI KeepAliveObject
  */

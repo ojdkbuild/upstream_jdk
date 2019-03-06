@@ -32,7 +32,7 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main ReserveMemory
  */
@@ -57,7 +57,7 @@ public class ReserveMemory {
           "-XX:+WhiteBoxAPI",
           "-XX:-TransmitErrorReport",
           "-XX:-CreateCoredumpOnCrash",
-          "-Xmx32m",
+          "-Xmx128m",
           "ReserveMemory",
           "test");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -240,14 +240,6 @@ public class KDC {
          */
         CHECK_ADDRESSES,
     };
-
-    static {
-        if (System.getProperty("jdk.net.hosts.file") == null) {
-            String hostsFileName
-                    = System.getProperty("test.src", ".") + "/TestHosts";
-            System.setProperty("jdk.net.hosts.file", hostsFileName);
-        }
-    }
 
     /**
      * A standalone KDC server.
@@ -604,19 +596,7 @@ public class KDC {
      */
     private static EncryptionKey generateRandomKey(int eType)
             throws KrbException  {
-        // Is 32 enough for AES256? I should have generated the keys directly
-        // but different cryptos have different rules on what keys are valid.
-        char[] pass = randomPassword();
-        String algo;
-        switch (eType) {
-            case EncryptedData.ETYPE_DES_CBC_MD5: algo = "DES"; break;
-            case EncryptedData.ETYPE_DES3_CBC_HMAC_SHA1_KD: algo = "DESede"; break;
-            case EncryptedData.ETYPE_AES128_CTS_HMAC_SHA1_96: algo = "AES128"; break;
-            case EncryptedData.ETYPE_ARCFOUR_HMAC: algo = "ArcFourHMAC"; break;
-            case EncryptedData.ETYPE_AES256_CTS_HMAC_SHA1_96: algo = "AES256"; break;
-            default: algo = "DES"; break;
-        }
-        return new EncryptionKey(pass, "NOTHING", algo);    // Silly
+        return genKey0(randomPassword(), "NOTHING", null, eType, null);
     }
 
     /**
@@ -680,6 +660,8 @@ public class KDC {
         switch (etype) {
             case EncryptedData.ETYPE_AES128_CTS_HMAC_SHA1_96:
             case EncryptedData.ETYPE_AES256_CTS_HMAC_SHA1_96:
+            case EncryptedData.ETYPE_AES128_CTS_HMAC_SHA256_128:
+            case EncryptedData.ETYPE_AES256_CTS_HMAC_SHA384_192:
                 String pn = p.toString();
                 if (p.getRealmString() == null) {
                     pn = pn + "@" + getRealm();
@@ -687,7 +669,11 @@ public class KDC {
                 if (s2kparamses.containsKey(pn)) {
                     return s2kparamses.get(pn);
                 }
-                return new byte[] {0, 0, 0x10, 0};
+                if (etype < EncryptedData.ETYPE_AES128_CTS_HMAC_SHA256_128) {
+                    return new byte[]{0, 0, 0x10, 0};
+                } else {
+                    return new byte[]{0, 0, (byte) 0x80, 0};
+                }
             default:
                 return null;
         }
@@ -715,9 +701,8 @@ public class KDC {
                     kvno = pass[pass.length-1] - '0';
                 }
             }
-            return new EncryptionKey(EncryptionKeyDotStringToKey(
-                    getPassword(p, server), getSalt(p), getParams(p, etype), etype),
-                    etype, kvno);
+            return genKey0(getPassword(p, server), getSalt(p),
+                    getParams(p, etype), etype, kvno);
         } catch (KrbException ke) {
             throw ke;
         } catch (Exception e) {
@@ -728,10 +713,21 @@ public class KDC {
     /**
      * Returns a KerberosTime.
      *
-     * @param offset offset from NOW in milliseconds
+     * @param offset offset from NOW in seconds
      */
-    private static KerberosTime timeFor(long offset) {
-        return new KerberosTime(new Date().getTime() + offset);
+    private static KerberosTime timeAfter(int offset) {
+        return new KerberosTime(new Date().getTime() + offset * 1000L);
+    }
+
+    /**
+     * Generates key from password.
+     */
+    private static EncryptionKey genKey0(
+            char[] pass, String salt, byte[] s2kparams,
+            int etype, Integer kvno) throws KrbException {
+        return new EncryptionKey(EncryptionKeyDotStringToKey(
+                pass, salt, s2kparams, etype),
+                etype, kvno);
     }
 
     /**
@@ -836,12 +832,12 @@ public class KDC {
             KerberosTime from = body.from;
             KerberosTime till = body.till;
             if (from == null || from.isZero()) {
-                from = timeFor(0);
+                from = timeAfter(0);
             }
             if (till == null) {
                 throw new KrbException(Krb5.KDC_ERR_NEVER_VALID); // TODO
             } else if (till.isZero()) {
-                till = timeFor(1000 * DEFAULT_LIFETIME);
+                till = timeAfter(DEFAULT_LIFETIME);
             }
 
             boolean[] bFlags = new boolean[Krb5.TKT_OPTS_MAX+1];
@@ -867,7 +863,7 @@ public class KDC {
             }
             if (body.kdcOptions.get(KDCOptions.RENEWABLE)) {
                 bFlags[Krb5.TKT_OPTS_RENEWABLE] = true;
-                //renew = timeFor(1000 * 3600 * 24 * 7);
+                //renew = timeAfter(3600 * 24 * 7);
             }
             if (body.kdcOptions.get(KDCOptions.PROXIABLE)) {
                 bFlags[Krb5.TKT_OPTS_PROXIABLE] = true;
@@ -937,7 +933,7 @@ public class KDC {
                     key,
                     cname,
                     new TransitedEncoding(1, new byte[0]),  // TODO
-                    timeFor(0),
+                    timeAfter(0),
                     from,
                     till, renewTill,
                     body.addresses != null ? body.addresses
@@ -956,13 +952,13 @@ public class KDC {
             EncTGSRepPart enc_part = new EncTGSRepPart(
                     key,
                     new LastReq(new LastReqEntry[] {
-                        new LastReqEntry(0, timeFor(-10000))
+                        new LastReqEntry(0, timeAfter(-10))
                     }),
                     body.getNonce(),    // TODO: detect replay
-                    timeFor(1000 * 3600 * 24),
+                    timeAfter(3600 * 24),
                     // Next 5 and last MUST be same with ticket
                     tFlags,
-                    timeFor(0),
+                    timeAfter(0),
                     from,
                     till, renewTill,
                     service,
@@ -990,7 +986,7 @@ public class KDC {
                     + " " +ke.returnCodeMessage());
             if (kerr == null) {
                 kerr = new KRBError(null, null, null,
-                        timeFor(0),
+                        timeAfter(0),
                         0,
                         ke.returnCode(),
                         body.cname,
@@ -1063,20 +1059,21 @@ public class KDC {
             KerberosTime till = body.till;
             KerberosTime rtime = body.rtime;
             if (from == null || from.isZero()) {
-                from = timeFor(0);
+                from = timeAfter(0);
             }
             if (till == null) {
                 throw new KrbException(Krb5.KDC_ERR_NEVER_VALID); // TODO
             } else if (till.isZero()) {
-                till = timeFor(1000 * DEFAULT_LIFETIME);
-            } else if (till.greaterThan(timeFor(24 * 3600 * 1000))) {
+                till = timeAfter(DEFAULT_LIFETIME);
+            } else if (till.greaterThan(timeAfter(24 * 3600))
+                     && System.getProperty("test.kdc.force.till") == null) {
                 // If till is more than 1 day later, make it renewable
-                till = timeFor(1000 * DEFAULT_LIFETIME);
+                till = timeAfter(DEFAULT_LIFETIME);
                 body.kdcOptions.set(KDCOptions.RENEWABLE, true);
                 if (rtime == null) rtime = till;
             }
             if (rtime == null && body.kdcOptions.get(KDCOptions.RENEWABLE)) {
-                rtime = timeFor(1000 * DEFAULT_RENEWTIME);
+                rtime = timeAfter(DEFAULT_RENEWTIME);
             }
             //body.from
             boolean[] bFlags = new boolean[Krb5.TKT_OPTS_MAX+1];
@@ -1092,7 +1089,7 @@ public class KDC {
             }
             if (body.kdcOptions.get(KDCOptions.RENEWABLE)) {
                 bFlags[Krb5.TKT_OPTS_RENEWABLE] = true;
-                //renew = timeFor(1000 * 3600 * 24 * 7);
+                //renew = timeAfter(3600 * 24 * 7);
             }
             if (body.kdcOptions.get(KDCOptions.PROXIABLE)) {
                 bFlags[Krb5.TKT_OPTS_PROXIABLE] = true;
@@ -1181,8 +1178,8 @@ public class KDC {
                 }
                 boolean allOld = true;
                 for (int i: eTypes) {
-                    if (i == EncryptedData.ETYPE_AES128_CTS_HMAC_SHA1_96 ||
-                            i == EncryptedData.ETYPE_AES256_CTS_HMAC_SHA1_96) {
+                    if (i >= EncryptedData.ETYPE_AES128_CTS_HMAC_SHA1_96 &&
+                            i != EncryptedData.ETYPE_ARCFOUR_HMAC) {
                         allOld = false;
                         break;
                     }
@@ -1238,7 +1235,7 @@ public class KDC {
                     key,
                     body.cname,
                     new TransitedEncoding(1, new byte[0]),
-                    timeFor(0),
+                    timeAfter(0),
                     from,
                     till, rtime,
                     body.addresses,
@@ -1250,13 +1247,13 @@ public class KDC {
             EncASRepPart enc_part = new EncASRepPart(
                     key,
                     new LastReq(new LastReqEntry[]{
-                        new LastReqEntry(0, timeFor(-10000))
+                        new LastReqEntry(0, timeAfter(-10))
                     }),
                     body.getNonce(),    // TODO: detect replay?
-                    timeFor(1000 * 3600 * 24),
+                    timeAfter(3600 * 24),
                     // Next 5 and last MUST be same with ticket
                     tFlags,
-                    timeFor(0),
+                    timeAfter(0),
                     from,
                     till, rtime,
                     service,
@@ -1318,7 +1315,7 @@ public class KDC {
                     eData = temp.toByteArray();
                 }
                 kerr = new KRBError(null, null, null,
-                        timeFor(0),
+                        timeAfter(0),
                         0,
                         ke.returnCode(),
                         body.cname,

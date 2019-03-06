@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.api.directives.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -48,6 +50,21 @@ public class ProbabilityDirectiveTest extends GraalCompilerTest {
     @Test
     public void testBranchProbability() {
         test("branchProbabilitySnippet", 5);
+    }
+
+    public static int branchProbabilitySnippet2(int arg) {
+        if (!GraalDirectives.injectBranchProbability(0.125, arg <= 0)) {
+            GraalDirectives.controlFlowAnchor(); // prevent removal of the if
+            return 2;
+        } else {
+            GraalDirectives.controlFlowAnchor(); // prevent removal of the if
+            return 1;
+        }
+    }
+
+    @Test
+    public void testBranchProbability2() {
+        test("branchProbabilitySnippet2", 5);
     }
 
     @Override

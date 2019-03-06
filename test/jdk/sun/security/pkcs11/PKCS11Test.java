@@ -31,6 +31,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPairGenerator;
@@ -46,6 +47,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
@@ -387,6 +389,11 @@ public abstract class PKCS11Test {
         getNSSInfo(nss_library);
     }
 
+    // Try to parse the version for the specified library.
+    // Assuming the library contains either of the following patterns:
+    // $Header: NSS <version>
+    // Version: NSS <version>
+    // Here, <version> stands for NSS version.
     static double getNSSInfo(String library) {
         // look for two types of headers in NSS libraries
         String nssHeader1 = "$Header: NSS";
@@ -417,7 +424,7 @@ public abstract class PKCS11Test {
                         read = 100 + is.read(data, 100, 900);
                     }
 
-                    s = new String(data, 0, read);
+                    s = new String(data, 0, read, StandardCharsets.US_ASCII);
                     i = s.indexOf(nssHeader1);
                     if (i > 0 || (i = s.indexOf(nssHeader2)) > 0) {
                         found = true;
@@ -443,7 +450,12 @@ public abstract class PKCS11Test {
 
         // the index after whitespace after nssHeader
         int afterheader = s.indexOf("NSS", i) + 4;
-        String version = s.substring(afterheader, s.indexOf(' ', afterheader));
+        String version = String.valueOf(s.charAt(afterheader));
+        for (char c = s.charAt(++afterheader);
+                c == '.' || (c >= '0' && c <= '9');
+                c = s.charAt(++afterheader)) {
+            version += c;
+        }
 
         // If a "dot dot" release, strip the extra dots for double parsing
         String[] dot = version.split("\\.");
@@ -458,6 +470,9 @@ public abstract class PKCS11Test {
         try {
             nss_version = Double.parseDouble(version);
         } catch (NumberFormatException e) {
+            System.out.println("===== Content start =====");
+            System.out.println(s);
+            System.out.println("===== Content end =====");
             System.out.println("Failed to parse lib" + library +
                     " version. Set to 0.0");
             e.printStackTrace();
@@ -562,21 +577,8 @@ public abstract class PKCS11Test {
             }
 
             curve = kcProp.substring(begin, end);
-            ECParameterSpec e = getECParameterSpec(p, curve);
-            System.out.print("\t "+ curve + ": ");
-            try {
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", p);
-                kpg.initialize(e);
-                kpg.generateKeyPair();
-                results.add(e);
-                System.out.println("Supported");
-            } catch (ProviderException ex) {
-                System.out.println("Unsupported: PKCS11: " +
-                        ex.getCause().getMessage());
-            } catch (InvalidAlgorithmParameterException ex) {
-                System.out.println("Unsupported: Key Length: " +
-                        ex.getMessage());
-            }
+            getSupportedECParameterSpec(curve, p)
+                .ifPresent(spec -> results.add(spec));
         }
 
         if (results.size() == 0) {
@@ -584,6 +586,27 @@ public abstract class PKCS11Test {
         }
 
         return results;
+    }
+
+    static Optional<ECParameterSpec> getSupportedECParameterSpec(String curve,
+            Provider p) throws Exception {
+        ECParameterSpec e = getECParameterSpec(p, curve);
+        System.out.print("\t "+ curve + ": ");
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", p);
+            kpg.initialize(e);
+            kpg.generateKeyPair();
+            System.out.println("Supported");
+            return Optional.of(e);
+        } catch (ProviderException ex) {
+            System.out.println("Unsupported: PKCS11: " +
+                    ex.getCause().getMessage());
+            return Optional.empty();
+        } catch (InvalidAlgorithmParameterException ex) {
+            System.out.println("Unsupported: Key Length: " +
+                    ex.getMessage());
+            return Optional.empty();
+        }
     }
 
     private static ECParameterSpec getECParameterSpec(Provider p, String name)

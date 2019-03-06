@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,15 +37,15 @@
 #include "classfile/verificationType.hpp"
 #include "classfile/verifier.hpp"
 #include "classfile/vmSymbols.hpp"
-#include "gc/shared/gcLocker.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/allocation.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/annotations.hpp"
+#include "oops/constantPool.inline.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceMirrorKlass.hpp"
@@ -57,16 +57,19 @@
 #include "oops/symbol.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "prims/jvmtiThreadState.hpp"
+#include "runtime/arguments.hpp"
+#include "runtime/handles.inline.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/perfData.hpp"
 #include "runtime/reflection.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "runtime/signature.hpp"
 #include "runtime/timer.hpp"
 #include "services/classLoadingService.hpp"
 #include "services/threadService.hpp"
-#include "trace/traceMacros.hpp"
 #include "utilities/align.hpp"
 #include "utilities/bitMap.inline.hpp"
+#include "utilities/copy.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/growableArray.hpp"
@@ -75,6 +78,9 @@
 #include "utilities/resourceHash.hpp"
 #if INCLUDE_CDS
 #include "classfile/systemDictionaryShared.hpp"
+#endif
+#if INCLUDE_JFR
+#include "jfr/support/jfrTraceIdExtension.hpp"
 #endif
 
 // We generally try to create the oops directly when parsing, rather than
@@ -86,8 +92,7 @@
 
 #define JAVA_CLASSFILE_MAGIC              0xCAFEBABE
 #define JAVA_MIN_SUPPORTED_VERSION        45
-#define JAVA_MAX_SUPPORTED_VERSION        54
-#define JAVA_MAX_SUPPORTED_MINOR_VERSION  0
+#define JAVA_PREVIEW_MINOR_VERSION        65535
 
 // Used for two backward compatibility reasons:
 // - to check for new additions to the class file format in JDK1.5
@@ -109,6 +114,8 @@
 #define JAVA_9_VERSION                    53
 
 #define JAVA_10_VERSION                   54
+
+#define JAVA_11_VERSION                   55
 
 void ClassFileParser::set_class_bad_constant_seen(short bad_constant) {
   assert((bad_constant == 19 || bad_constant == 20) && _major_version >= JAVA_9_VERSION,
@@ -202,6 +209,21 @@ void ClassFileParser::parse_constant_pool_entries(const ClassFileStream* const s
         else {
           ShouldNotReachHere();
         }
+        break;
+      }
+      case JVM_CONSTANT_Dynamic : {
+        if (_major_version < Verifier::DYNAMICCONSTANT_MAJOR_VERSION) {
+          classfile_parse_error(
+              "Class file version does not support constant tag %u in class file %s",
+              tag, CHECK);
+        }
+        cfs->guarantee_more(5, CHECK);  // bsm_index, nt, tag/access_flags
+        const u2 bootstrap_specifier_index = cfs->get_u2_fast();
+        const u2 name_and_type_index = cfs->get_u2_fast();
+        if (_max_bootstrap_specifier_index < (int) bootstrap_specifier_index) {
+          _max_bootstrap_specifier_index = (int) bootstrap_specifier_index;  // collect for later
+        }
+        cp->dynamic_constant_at_put(index, bootstrap_specifier_index, name_and_type_index);
         break;
       }
       case JVM_CONSTANT_InvokeDynamic : {
@@ -536,6 +558,21 @@ void ClassFileParser::parse_constant_pool(const ClassFileStream* const stream,
           ref_index, CHECK);
         break;
       }
+      case JVM_CONSTANT_Dynamic: {
+        const int name_and_type_ref_index =
+          cp->invoke_dynamic_name_and_type_ref_index_at(index);
+
+        check_property(valid_cp_range(name_and_type_ref_index, length) &&
+          cp->tag_at(name_and_type_ref_index).is_name_and_type(),
+          "Invalid constant pool index %u in class file %s",
+          name_and_type_ref_index, CHECK);
+        // bootstrap specifier index must be checked later,
+        // when BootstrapMethods attr is available
+
+        // Mark the constant pool as having a CONSTANT_Dynamic_info structure
+        cp->set_has_dynamic_constant();
+        break;
+      }
       case JVM_CONSTANT_InvokeDynamic: {
         const int name_and_type_ref_index =
           cp->invoke_dynamic_name_and_type_ref_index_at(index);
@@ -628,6 +665,27 @@ void ClassFileParser::parse_constant_pool(const ClassFileStream* const stream,
         }
         break;
       }
+      case JVM_CONSTANT_Dynamic: {
+        const int name_and_type_ref_index =
+          cp->name_and_type_ref_index_at(index);
+        // already verified to be utf8
+        const int name_ref_index =
+          cp->name_ref_index_at(name_and_type_ref_index);
+        // already verified to be utf8
+        const int signature_ref_index =
+          cp->signature_ref_index_at(name_and_type_ref_index);
+        const Symbol* const name = cp->symbol_at(name_ref_index);
+        const Symbol* const signature = cp->symbol_at(signature_ref_index);
+        if (_need_verify) {
+          // CONSTANT_Dynamic's name and signature are verified above, when iterating NameAndType_info.
+          // Need only to be sure signature is non-zero length and the right type.
+          if (signature->utf8_length() == 0 ||
+              signature->byte_at(0) == JVM_SIGNATURE_FUNC) {
+            throwIllegalSignature("CONSTANT_Dynamic", name, signature, CHECK);
+          }
+        }
+        break;
+      }
       case JVM_CONSTANT_InvokeDynamic:
       case JVM_CONSTANT_Fieldref:
       case JVM_CONSTANT_Methodref:
@@ -716,6 +774,13 @@ void ClassFileParser::parse_constant_pool(const ClassFileStream* const stream,
       }
     }  // switch(tag)
   }  // end of for
+}
+
+Handle ClassFileParser::clear_cp_patch_at(int index) {
+  Handle patch = cp_patch_at(index);
+  _cp_patches->at_put(index, Handle());
+  assert(!has_cp_patch_at(index), "");
+  return patch;
 }
 
 void ClassFileParser::patch_class(ConstantPool* cp, int class_index, Klass* k, Symbol* name) {
@@ -890,7 +955,10 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
 
       if (!interf->is_interface()) {
         THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
-                   "Implementing class");
+                  err_msg("class %s can not implement %s, because it is not an interface (%s)",
+                          _class_name->as_klass_external_name(),
+                          interf->external_name(),
+                          interf->class_in_module_of_loader()));
       }
 
       if (InstanceKlass::cast(interf)->has_nonstatic_concrete_methods()) {
@@ -1806,7 +1874,7 @@ class LVT_Hash : public AllStatic {
 
 
 // Class file LocalVariableTable elements.
-class Classfile_LVT_Element VALUE_OBJ_CLASS_SPEC {
+class Classfile_LVT_Element {
  public:
   u2 start_bci;
   u2 length;
@@ -3081,7 +3149,6 @@ u2 ClassFileParser::parse_classfile_inner_classes_attribute(const ClassFileStrea
   _inner_classes = inner_classes;
 
   int index = 0;
-  const int cp_size = _cp->length();
   cfs->guarantee_more(8 * length, CHECK_0);  // 4-tuples of u2
   for (int n = 0; n < length; n++) {
     // Inner class index
@@ -3146,6 +3213,38 @@ u2 ClassFileParser::parse_classfile_inner_classes_attribute(const ClassFileStrea
   if (parsed_enclosingmethod_attribute) {
     inner_classes->at_put(index++, enclosing_method_class_index);
     inner_classes->at_put(index++, enclosing_method_method_index);
+  }
+  assert(index == size, "wrong size");
+
+  // Restore buffer's current position.
+  cfs->set_current(current_mark);
+
+  return length;
+}
+
+u2 ClassFileParser::parse_classfile_nest_members_attribute(const ClassFileStream* const cfs,
+                                                           const u1* const nest_members_attribute_start,
+                                                           TRAPS) {
+  const u1* const current_mark = cfs->current();
+  u2 length = 0;
+  if (nest_members_attribute_start != NULL) {
+    cfs->set_current(nest_members_attribute_start);
+    cfs->guarantee_more(2, CHECK_0);  // length
+    length = cfs->get_u2_fast();
+  }
+  const int size = length;
+  Array<u2>* const nest_members = MetadataFactory::new_array<u2>(_loader_data, size, CHECK_0);
+  _nest_members = nest_members;
+
+  int index = 0;
+  cfs->guarantee_more(2 * length, CHECK_0);
+  for (int n = 0; n < length; n++) {
+    const u2 class_info_index = cfs->get_u2_fast();
+    check_property(
+      valid_klass_reference_at(class_info_index),
+      "Nest member class_info_index %u has bad constant type in class file %s",
+      class_info_index, CHECK_0);
+    nest_members->at_put(index++, class_info_index);
   }
   assert(index == size, "wrong size");
 
@@ -3262,10 +3361,14 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
 
   // Set inner classes attribute to default sentinel
   _inner_classes = Universe::the_empty_short_array();
+  // Set nest members attribute to default sentinel
+  _nest_members = Universe::the_empty_short_array();
   cfs->guarantee_more(2, CHECK);  // attributes_count
   u2 attributes_count = cfs->get_u2_fast();
   bool parsed_sourcefile_attribute = false;
   bool parsed_innerclasses_attribute = false;
+  bool parsed_nest_members_attribute = false;
+  bool parsed_nest_host_attribute = false;
   bool parsed_enclosingmethod_attribute = false;
   bool parsed_bootstrap_methods_attribute = false;
   const u1* runtime_visible_annotations = NULL;
@@ -3283,6 +3386,9 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
   u4  inner_classes_attribute_length = 0;
   u2  enclosing_method_class_index = 0;
   u2  enclosing_method_method_index = 0;
+  const u1* nest_members_attribute_start = NULL;
+  u4  nest_members_attribute_length = 0;
+
   // Iterate over attributes
   while (attributes_count--) {
     cfs->guarantee_more(6, CHECK);  // attribute_name_index, attribute_length
@@ -3431,6 +3537,40 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
           assert(runtime_invisible_type_annotations != NULL, "null invisible type annotations");
         }
         cfs->skip_u1(attribute_length, CHECK);
+      } else if (_major_version >= JAVA_11_VERSION) {
+        if (tag == vmSymbols::tag_nest_members()) {
+          // Check for NestMembers tag
+          if (parsed_nest_members_attribute) {
+            classfile_parse_error("Multiple NestMembers attributes in class file %s", CHECK);
+          } else {
+            parsed_nest_members_attribute = true;
+          }
+          if (parsed_nest_host_attribute) {
+            classfile_parse_error("Conflicting NestHost and NestMembers attributes in class file %s", CHECK);
+          }
+          nest_members_attribute_start = cfs->current();
+          nest_members_attribute_length = attribute_length;
+          cfs->skip_u1(nest_members_attribute_length, CHECK);
+        } else if (tag == vmSymbols::tag_nest_host()) {
+          if (parsed_nest_host_attribute) {
+            classfile_parse_error("Multiple NestHost attributes in class file %s", CHECK);
+          } else {
+            parsed_nest_host_attribute = true;
+          }
+          if (parsed_nest_members_attribute) {
+            classfile_parse_error("Conflicting NestMembers and NestHost attributes in class file %s", CHECK);
+          }
+          if (_need_verify) {
+            guarantee_property(attribute_length == 2, "Wrong NestHost attribute length in class file %s", CHECK);
+          }
+          cfs->guarantee_more(2, CHECK);
+          u2 class_info_index = cfs->get_u2_fast();
+          check_property(
+                         valid_klass_reference_at(class_info_index),
+                         "Nest-host class_info_index %u has bad constant type in class file %s",
+                         class_info_index, CHECK);
+          _nest_host = class_info_index;
+        }
       } else {
         // Unknown attribute
         cfs->skip_u1(attribute_length, CHECK);
@@ -3459,10 +3599,22 @@ void ClassFileParser::parse_classfile_attributes(const ClassFileStream* const cf
                             enclosing_method_class_index,
                             enclosing_method_method_index,
                             CHECK);
-    if (parsed_innerclasses_attribute &&_need_verify && _major_version >= JAVA_1_5_VERSION) {
+    if (parsed_innerclasses_attribute && _need_verify && _major_version >= JAVA_1_5_VERSION) {
       guarantee_property(
         inner_classes_attribute_length == sizeof(num_of_classes) + 4 * sizeof(u2) * num_of_classes,
         "Wrong InnerClasses attribute length in class file %s", CHECK);
+    }
+  }
+
+  if (parsed_nest_members_attribute) {
+    const u2 num_of_classes = parse_classfile_nest_members_attribute(
+                            cfs,
+                            nest_members_attribute_start,
+                            CHECK);
+    if (_need_verify) {
+      guarantee_property(
+        nest_members_attribute_length == sizeof(num_of_classes) + sizeof(u2) * num_of_classes,
+        "Wrong NestMembers attribute length in class file %s", CHECK);
     }
   }
 
@@ -3528,9 +3680,16 @@ void ClassFileParser::apply_parsed_class_metadata(
   this_klass->set_fields(_fields, java_fields_count);
   this_klass->set_methods(_methods);
   this_klass->set_inner_classes(_inner_classes);
+  this_klass->set_nest_members(_nest_members);
+  this_klass->set_nest_host_index(_nest_host);
   this_klass->set_local_interfaces(_local_interfaces);
-  this_klass->set_transitive_interfaces(_transitive_interfaces);
   this_klass->set_annotations(_combined_annotations);
+  // Delay the setting of _transitive_interfaces until after initialize_supers() in
+  // fill_instance_klass(). It is because the _transitive_interfaces may be shared with
+  // its _super. If an OOM occurs while loading the current klass, its _super field
+  // may not have been set. When GC tries to free the klass, the _transitive_interfaces
+  // may be deallocated mistakenly in InstanceKlass::deallocate_interfaces(). Subsequent
+  // dereferences to the deallocated _transitive_interfaces will result in a crash.
 
   // Clear out these fields so they don't get deallocated by the destructor
   clear_class_metadata();
@@ -3715,9 +3874,7 @@ void ClassFileParser::layout_fields(ConstantPool* cp,
   int next_static_oop_offset    = InstanceMirrorKlass::offset_of_static_fields();
   int next_static_double_offset = next_static_oop_offset +
                                       ((fac->count[STATIC_OOP]) * heapOopSize);
-  if ( fac->count[STATIC_DOUBLE] &&
-       (Universe::field_type_should_be_aligned(T_DOUBLE) ||
-        Universe::field_type_should_be_aligned(T_LONG)) ) {
+  if (fac->count[STATIC_DOUBLE]) {
     next_static_double_offset = align_up(next_static_double_offset, BytesPerLong);
   }
 
@@ -4330,7 +4487,7 @@ static void record_defined_class_dependencies(const InstanceKlass* defined_klass
     // add super class dependency
     Klass* const super = defined_klass->super();
     if (super != NULL) {
-      defining_loader_data->record_dependency(super, CHECK);
+      defining_loader_data->record_dependency(super);
     }
 
     // add super interface dependencies
@@ -4338,7 +4495,7 @@ static void record_defined_class_dependencies(const InstanceKlass* defined_klass
     if (local_interfaces != NULL) {
       const int length = local_interfaces->length();
       for (int i = 0; i < length; i++) {
-        defining_loader_data->record_dependency(local_interfaces->at(i), CHECK);
+        defining_loader_data->record_dependency(local_interfaces->at(i));
       }
     }
   }
@@ -4441,7 +4598,7 @@ static void check_super_class_access(const InstanceKlass* this_klass, TRAPS) {
           vmSymbols::java_lang_IllegalAccessError(),
           "class %s loaded by %s cannot access jdk/internal/reflect superclass %s",
           this_klass->external_name(),
-          this_klass->class_loader_data()->loader_name(),
+          this_klass->class_loader_data()->loader_name_and_id(),
           super->external_name());
         return;
       }
@@ -4455,12 +4612,17 @@ static void check_super_class_access(const InstanceKlass* this_klass, TRAPS) {
                                                       InstanceKlass::cast(super),
                                                       vca_result);
       if (msg == NULL) {
+        bool same_module = (this_klass->module() == super->module());
         Exceptions::fthrow(
           THREAD_AND_LOCATION,
           vmSymbols::java_lang_IllegalAccessError(),
-          "class %s cannot access its superclass %s",
+          "class %s cannot access its %ssuperclass %s (%s%s%s)",
           this_klass->external_name(),
-          super->external_name());
+          super->is_abstract() ? "abstract " : "",
+          super->external_name(),
+          (same_module) ? this_klass->joint_in_module_of_loader(super) : this_klass->class_in_module_of_loader(),
+          (same_module) ? "" : "; ",
+          (same_module) ? "" : super->class_in_module_of_loader());
       } else {
         // Add additional message content.
         Exceptions::fthrow(
@@ -4489,12 +4651,16 @@ static void check_super_interface_access(const InstanceKlass* this_klass, TRAPS)
                                                       InstanceKlass::cast(k),
                                                       vca_result);
       if (msg == NULL) {
+        bool same_module = (this_klass->module() == k->module());
         Exceptions::fthrow(
           THREAD_AND_LOCATION,
           vmSymbols::java_lang_IllegalAccessError(),
-          "class %s cannot access its superinterface %s",
+          "class %s cannot access its superinterface %s (%s%s%s)",
           this_klass->external_name(),
-          k->external_name());
+          k->external_name(),
+          (same_module) ? this_klass->joint_in_module_of_loader(k) : this_klass->class_in_module_of_loader(),
+          (same_module) ? "" : "; ",
+          (same_module) ? "" : k->class_in_module_of_loader());
       } else {
         // Add additional message content.
         Exceptions::fthrow(
@@ -4535,24 +4701,26 @@ static void check_final_method_override(const InstanceKlass* this_klass, TRAPS) 
           }
 
           if (super_m->is_final() && !super_m->is_static() &&
-              // matching method in super is final, and not static
-              (Reflection::verify_field_access(this_klass,
-                                               super_m->method_holder(),
-                                               super_m->method_holder(),
-                                               super_m->access_flags(), false))
-            // this class can access super final method and therefore override
-            ) {
-            ResourceMark rm(THREAD);
-            Exceptions::fthrow(
-              THREAD_AND_LOCATION,
-              vmSymbols::java_lang_VerifyError(),
-              "class %s overrides final method %s.%s%s",
-              this_klass->external_name(),
-              super_m->method_holder()->external_name(),
-              name->as_C_string(),
-              signature->as_C_string()
-            );
-            return;
+              !super_m->access_flags().is_private()) {
+            // matching method in super is final, and not static or private
+            bool can_access = Reflection::verify_member_access(this_klass,
+                                                               super_m->method_holder(),
+                                                               super_m->method_holder(),
+                                                               super_m->access_flags(),
+                                                              false, false, CHECK);
+            if (can_access) {
+              // this class can access super final method and therefore override
+              ResourceMark rm(THREAD);
+              Exceptions::fthrow(THREAD_AND_LOCATION,
+                                 vmSymbols::java_lang_VerifyError(),
+                                 "class %s overrides final method %s.%s%s",
+                                 this_klass->external_name(),
+                                 super_m->method_holder()->external_name(),
+                                 name->as_C_string(),
+                                 signature->as_C_string()
+                                 );
+              return;
+            }
           }
 
           // continue to look from super_m's holder's super.
@@ -4641,12 +4809,63 @@ static bool has_illegal_visibility(jint flags) {
           (is_protected && is_private));
 }
 
-static bool is_supported_version(u2 major, u2 minor){
-  const u2 max_version = JAVA_MAX_SUPPORTED_VERSION;
-  return (major >= JAVA_MIN_SUPPORTED_VERSION) &&
-         (major <= max_version) &&
-         ((major != max_version) ||
-          (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION));
+// A legal major_version.minor_version must be one of the following:
+//
+//   Major_version = 45, any minor_version.
+//   Major_version >= 46 and major_version <= current_major_version and minor_version = 0.
+//   Major_version = current_major_version and minor_version = 65535 and --enable-preview is present.
+//
+static void verify_class_version(u2 major, u2 minor, Symbol* class_name, TRAPS){
+  const u2 max_version = JVM_CLASSFILE_MAJOR_VERSION;
+  if (major != JAVA_MIN_SUPPORTED_VERSION) { // All 45.* are ok including 45.65535
+    if (minor == JAVA_PREVIEW_MINOR_VERSION) {
+      if (major != max_version) {
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_UnsupportedClassVersionError(),
+          "%s (class file version %u.%u) was compiled with preview features that are unsupported. "
+          "This version of the Java Runtime only recognizes preview features for class file version %u.%u",
+          class_name->as_C_string(), major, minor, JVM_CLASSFILE_MAJOR_VERSION, JAVA_PREVIEW_MINOR_VERSION);
+        return;
+      }
+
+      if (!Arguments::enable_preview()) {
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_UnsupportedClassVersionError(),
+          "Preview features are not enabled for %s (class file version %u.%u). Try running with '--enable-preview'",
+          class_name->as_C_string(), major, minor);
+        return;
+      }
+
+    } else { // minor != JAVA_PREVIEW_MINOR_VERSION
+      if (major > max_version) {
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_UnsupportedClassVersionError(),
+          "%s has been compiled by a more recent version of the Java Runtime (class file version %u.%u), "
+          "this version of the Java Runtime only recognizes class file versions up to %u.0",
+          class_name->as_C_string(), major, minor, JVM_CLASSFILE_MAJOR_VERSION);
+      } else if (major < JAVA_MIN_SUPPORTED_VERSION) {
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_UnsupportedClassVersionError(),
+          "%s (class file version %u.%u) was compiled with an invalid major version",
+          class_name->as_C_string(), major, minor);
+      } else if (minor != 0) {
+        ResourceMark rm(THREAD);
+        Exceptions::fthrow(
+          THREAD_AND_LOCATION,
+          vmSymbols::java_lang_UnsupportedClassVersionError(),
+          "%s (class file version %u.%u) was compiled with an invalid non-zero minor version",
+          class_name->as_C_string(), major, minor);
+      }
+    }
+  }
 }
 
 void ClassFileParser::verify_legal_field_modifiers(jint flags,
@@ -5311,6 +5530,16 @@ InstanceKlass* ClassFileParser::create_instance_klass(bool changed_by_loadhook, 
 void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loadhook, TRAPS) {
   assert(ik != NULL, "invariant");
 
+  // Set name and CLD before adding to CLD
+  ik->set_class_loader_data(_loader_data);
+  ik->set_name(_class_name);
+
+  // Add all classes to our internal class loader list here,
+  // including classes in the bootstrap (NULL) class loader.
+  const bool publicize = !is_internal();
+
+  _loader_data->add_class(ik, publicize);
+
   set_klass_to_deallocate(ik);
 
   assert(_field_info != NULL, "invariant");
@@ -5325,7 +5554,6 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   ik->set_should_verify_class(_need_verify);
 
   // Not yet: supers are done below to support the new subtype-checking fields
-  ik->set_class_loader_data(_loader_data);
   ik->set_nonstatic_field_size(_field_info->nonstatic_field_size);
   ik->set_has_nonstatic_fields(_field_info->has_nonstatic_fields);
   assert(_fac != NULL, "invariant");
@@ -5340,8 +5568,8 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   assert(NULL == _fields, "invariant");
   assert(NULL == _methods, "invariant");
   assert(NULL == _inner_classes, "invariant");
+  assert(NULL == _nest_members, "invariant");
   assert(NULL == _local_interfaces, "invariant");
-  assert(NULL == _transitive_interfaces, "invariant");
   assert(NULL == _combined_annotations, "invariant");
 
   if (_has_final_method) {
@@ -5356,7 +5584,7 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   // has to be changed accordingly.
   ik->set_initial_method_idnum(ik->methods()->length());
 
-  ik->set_name(_class_name);
+  ik->set_this_class_index(_this_class_index);
 
   if (is_anonymous()) {
     // _this_class_index is a CONSTANT_Class entry that refers to this
@@ -5408,7 +5636,9 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
   }
 
   // Fill in information needed to compute superclasses.
-  ik->initialize_supers(const_cast<InstanceKlass*>(_super_klass), CHECK);
+  ik->initialize_supers(const_cast<InstanceKlass*>(_super_klass), _transitive_interfaces, CHECK);
+  ik->set_transitive_interfaces(_transitive_interfaces);
+  _transitive_interfaces = NULL;
 
   // Initialize itable offset tables
   klassItable::setup_itable_offset_table(ik);
@@ -5483,6 +5713,13 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
       ik->print_class_load_logging(_loader_data, module_name, _stream);
     }
 
+    if (ik->minor_version() == JAVA_PREVIEW_MINOR_VERSION &&
+        ik->major_version() != JAVA_MIN_SUPPORTED_VERSION &&
+        log_is_enabled(Info, class, preview)) {
+      ResourceMark rm;
+      log_info(class, preview)("Loading preview feature type %s", ik->external_name());
+    }
+
     if (log_is_enabled(Debug, class, resolve))  {
       ResourceMark rm;
       // print out the superclass.
@@ -5505,7 +5742,7 @@ void ClassFileParser::fill_instance_klass(InstanceKlass* ik, bool changed_by_loa
     }
   }
 
-  TRACE_INIT_ID(ik);
+  JFR_ONLY(INIT_ID(ik);)
 
   // If we reach here, all is well.
   // Now remove the InstanceKlass* from the _klass_to_deallocate field
@@ -5601,6 +5838,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
   _fields(NULL),
   _methods(NULL),
   _inner_classes(NULL),
+  _nest_members(NULL),
+  _nest_host(0),
   _local_interfaces(NULL),
   _transitive_interfaces(NULL),
   _combined_annotations(NULL),
@@ -5705,8 +5944,8 @@ void ClassFileParser::clear_class_metadata() {
   _fields = NULL;
   _methods = NULL;
   _inner_classes = NULL;
+  _nest_members = NULL;
   _local_interfaces = NULL;
-  _transitive_interfaces = NULL;
   _combined_annotations = NULL;
   _annotations = _type_annotations = NULL;
   _fields_annotations = _fields_type_annotations = NULL;
@@ -5729,6 +5968,10 @@ ClassFileParser::~ClassFileParser() {
   // beware of the Universe::empty_blah_array!!
   if (_inner_classes != NULL && _inner_classes != Universe::the_empty_short_array()) {
     MetadataFactory::free_array<u2>(_loader_data, _inner_classes);
+  }
+
+  if (_nest_members != NULL && _nest_members != Universe::the_empty_short_array()) {
+    MetadataFactory::free_array<u2>(_loader_data, _nest_members);
   }
 
   // Free interfaces
@@ -5758,6 +6001,7 @@ ClassFileParser::~ClassFileParser() {
   }
 
   clear_class_metadata();
+  _transitive_interfaces = NULL;
 
   // deallocate the klass if already created.  Don't directly deallocate, but add
   // to the deallocate list so that the klass is removed from the CLD::_klasses list
@@ -5798,20 +6042,7 @@ void ClassFileParser::parse_stream(const ClassFileStream* const stream,
   }
 
   // Check version numbers - we check this even with verifier off
-  if (!is_supported_version(_major_version, _minor_version)) {
-    ResourceMark rm(THREAD);
-    Exceptions::fthrow(
-      THREAD_AND_LOCATION,
-      vmSymbols::java_lang_UnsupportedClassVersionError(),
-      "%s has been compiled by a more recent version of the Java Runtime (class file version %u.%u), "
-      "this version of the Java Runtime only recognizes class file versions up to %u.%u",
-      _class_name->as_C_string(),
-      _major_version,
-      _minor_version,
-      JAVA_MAX_SUPPORTED_VERSION,
-      JAVA_MAX_SUPPORTED_MINOR_VERSION);
-    return;
-  }
+  verify_class_version(_major_version, _minor_version, _class_name, CHECK);
 
   stream->guarantee_more(3, CHECK); // length, first cp tag
   u2 cp_size = stream->get_u2_fast();

@@ -28,9 +28,16 @@
  * @author Martin Buchholz
  */
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.PriorityBlockingQueue;
 
 @SuppressWarnings("unchecked")
 public class HotPotatoes {
@@ -63,7 +70,8 @@ public class HotPotatoes {
             System.out.printf("implClazz=%s, argClazz=%s\n",
                               implClazz.getName(), argClazz.getName());
             final int iterations = 100000;
-            final List<Integer> list = (List<Integer>) argClazz.newInstance();
+            final List<Integer> list = (List<Integer>)
+                argClazz.getDeclaredConstructor().newInstance();
             final Integer one = Integer.valueOf(1);
             final List<Integer> oneElementList = Collections.singletonList(one);
             final Constructor<? extends Collection> constr

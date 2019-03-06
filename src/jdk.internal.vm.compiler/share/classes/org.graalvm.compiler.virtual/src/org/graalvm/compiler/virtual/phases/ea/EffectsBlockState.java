@@ -20,13 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.Iterator;
 import java.util.Map;
 
-import org.graalvm.util.EconomicMap;
-import org.graalvm.util.UnmodifiableMapCursor;
+import jdk.internal.vm.compiler.collections.EconomicMap;
+import jdk.internal.vm.compiler.collections.UnmodifiableMapCursor;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 

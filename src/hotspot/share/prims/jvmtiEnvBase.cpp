@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/oopHandle.inline.hpp"
 #include "prims/jvmtiEnvBase.hpp"
 #include "prims/jvmtiEventController.inline.hpp"
 #include "prims/jvmtiExtensions.hpp"
@@ -38,8 +39,10 @@
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/deoptimization.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/frame.inline.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/jfieldIDWorkaround.hpp"
+#include "runtime/jniHandles.inline.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/objectMonitor.inline.hpp"
 #include "runtime/signature.hpp"
@@ -501,6 +504,24 @@ JvmtiEnvBase::jvmtiMalloc(jlong size) {
 }
 
 
+// Handle management
+
+jobject JvmtiEnvBase::jni_reference(Handle hndl) {
+  return JNIHandles::make_local(hndl());
+}
+
+jobject JvmtiEnvBase::jni_reference(JavaThread *thread, Handle hndl) {
+  return JNIHandles::make_local(thread, hndl());
+}
+
+void JvmtiEnvBase::destroy_jni_reference(jobject jobj) {
+  JNIHandles::destroy_local(jobj);
+}
+
+void JvmtiEnvBase::destroy_jni_reference(JavaThread *thread, jobject jobj) {
+  JNIHandles::destroy_local(jobj); // thread is unused.
+}
+
 //
 // Threads
 //
@@ -677,7 +698,7 @@ JvmtiEnvBase::get_owned_monitors(JavaThread *calling_thread, JavaThread* java_th
     int depth = 0;
     for (javaVFrame *jvf = java_thread->last_java_vframe(&reg_map); jvf != NULL;
          jvf = jvf->java_sender()) {
-      if (depth++ < MaxJavaStackTraceDepth) {  // check for stack too deep
+      if (MaxJavaStackTraceDepth == 0 || depth++ < MaxJavaStackTraceDepth) {  // check for stack too deep
         // add locked objects for this frame into list
         err = get_locked_objects_in_frame(calling_thread, java_thread, jvf, owned_monitors_list, depth-1);
         if (err != JVMTI_ERROR_NONE) {
@@ -1457,6 +1478,13 @@ JvmtiMonitorClosure::do_monitor(ObjectMonitor* mon) {
 }
 
 GrowableArray<OopHandle>* JvmtiModuleClosure::_tbl = NULL;
+
+void JvmtiModuleClosure::do_module(ModuleEntry* entry) {
+  assert_locked_or_safepoint(Module_lock);
+  OopHandle module = entry->module_handle();
+  guarantee(module.resolve() != NULL, "module object is NULL");
+  _tbl->push(module);
+}
 
 jvmtiError
 JvmtiModuleClosure::get_all_modules(JvmtiEnv* env, jint* module_count_ptr, jobject** modules_ptr) {

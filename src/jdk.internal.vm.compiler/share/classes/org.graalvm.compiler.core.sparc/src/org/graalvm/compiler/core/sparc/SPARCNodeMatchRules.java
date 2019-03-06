@@ -21,6 +21,8 @@
  * questions.
  */
 
+
+
 package org.graalvm.compiler.core.sparc;
 
 import static jdk.vm.ci.sparc.SPARCKind.BYTE;
@@ -29,6 +31,7 @@ import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
@@ -147,7 +150,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerEquals=compare value LogicCompareAndSwap=cas))")
     public ComplexMatchResult ifCompareLogicCas(IfNode root, CompareNode compare, ValueNode value, LogicCompareAndSwapNode cas) {
         JavaConstant constant = value.asJavaConstant();
-        assert compare.condition() == Condition.EQ;
+        assert compare.condition() == CanonicalCondition.EQ;
         if (constant != null && cas.usages().count() == 1) {
             long constantValue = constant.asLong();
             boolean successIsTrue;
@@ -168,7 +171,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
                 SPARCAddressValue address = (SPARCAddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
 
-                Value result = getLIRGeneratorTool().emitValueCompareAndSwap(address, expectedValue, newValue);
+                Value result = getLIRGeneratorTool().emitValueCompareAndSwap(kind, address, expectedValue, newValue);
                 getLIRGeneratorTool().emitCompareBranch(kind.getPlatformKind(), result, expectedValue, condition, false, trueLabel, falseLabel, trueLabelProbability);
                 return null;
             };

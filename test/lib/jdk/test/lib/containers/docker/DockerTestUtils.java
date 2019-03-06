@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package jdk.test.lib.containers.docker;
 
 import java.io.File;
@@ -34,6 +35,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
@@ -109,7 +111,9 @@ public class DockerTestUtils {
      * The jdk will be placed under the "/jdk/" folder inside the docker file system.
      *
      * @param imageName     name of the image to be created, including version tag
-     * @param dockerfile    name of the dockerfile residing in the test source
+     * @param dockerfile    name of the dockerfile residing in the test source;
+     *                      we check for a platform specific dockerfile as well
+     *                      and use this one in case it exists
      * @param buildDirName  name of the docker build/staging directory, which will
      *                      be created in the jtreg's scratch folder
      * @throws Exception
@@ -121,6 +125,11 @@ public class DockerTestUtils {
         Path buildDir = Paths.get(".", buildDirName);
         if (Files.exists(buildDir)) {
             throw new RuntimeException("The docker build directory already exists: " + buildDir);
+        }
+        // check for the existance of a platform specific docker file as well
+        String platformSpecificDockerfile = dockerfile + "-" + Platform.getOsArch();
+        if (Files.exists(Paths.get(Utils.TEST_SRC, platformSpecificDockerfile))) {
+          dockerfile = platformSpecificDockerfile;
         }
 
         Path jdkSrcDir = Paths.get(Utils.TEST_JDK);
@@ -153,7 +162,7 @@ public class DockerTestUtils {
         Files.copy(dockerfile, buildDir.resolve("Dockerfile"));
 
         // Build the docker
-        execute("docker", "build", buildDir.toString(), "--no-cache", "--tag", imageName)
+        execute("docker", "build", "--no-cache", "--tag", imageName, buildDir.toString())
             .shouldHaveExitValue(0)
             .shouldContain("Successfully built");
     }

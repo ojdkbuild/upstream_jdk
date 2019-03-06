@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.replacements;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static org.graalvm.compiler.hotspot.replacements.UnsafeAccess.UNSAFE;
@@ -59,18 +60,18 @@ import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.internal.vm.compiler.word.LocationIdentity;
+import jdk.internal.vm.compiler.word.WordFactory;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 //JaCoCo Exclude
@@ -134,7 +135,7 @@ public class HotSpotReplacementsUtil {
         }
     }
 
-    public static HotSpotJVMCIRuntimeProvider runtime() {
+    public static HotSpotJVMCIRuntime runtime() {
         return HotSpotJVMCIRuntime.runtime();
     }
 
@@ -303,7 +304,11 @@ public class HotSpotReplacementsUtil {
         return result;
     }
 
-    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
+    /*
+     * As far as Java code is concerned this can be considered immutable: it is set just after the
+     * JavaThread is created, before it is published. After that, it is never changed.
+     */
+    public static final LocationIdentity JAVA_THREAD_THREAD_OBJECT_LOCATION = NamedLocationIdentity.immutable("JavaThread::_threadObj");
 
     @Fold
     public static int threadObjectOffset(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -552,22 +557,33 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int arrayBaseOffset(JavaKind elementKind) {
-        return getArrayBaseOffset(elementKind);
+    public static int getArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayBaseOffset(elementKind);
     }
 
     @Fold
-    public static int arrayIndexScale(JavaKind elementKind) {
-        return getArrayIndexScale(elementKind);
+    public static int arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayIndexScale(elementKind);
     }
 
     public static Word arrayStart(int[] a) {
-        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(JavaKind.Int)));
+        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
     }
 
+    /**
+     * Idiom for making {@link GraalHotSpotVMConfig} a constant.
+     */
     @Fold
-    public static int objectAlignment(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectAlignment;
+    public static GraalHotSpotVMConfig getConfig(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config;
+    }
+
+    /**
+     * Calls {@link #arrayAllocationSize(int, int, int, GraalHotSpotVMConfig)} using an injected VM
+     * configuration object.
+     */
+    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
+        return arrayAllocationSize(length, headerSize, log2ElementSize, getConfig(INJECTED_VMCONFIG));
     }
 
     /**
@@ -578,10 +594,12 @@ public class HotSpotReplacementsUtil {
      * @param length the number of elements in the array
      * @param headerSize the size of the array header
      * @param log2ElementSize log2 of the size of an element in the array
+     * @param config the VM configuration providing the
+     *            {@linkplain GraalHotSpotVMConfig#objectAlignment object alignment requirement}
      * @return the size of the memory chunk
      */
-    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
-        int alignment = objectAlignment(INJECTED_VMCONFIG);
+    public static int arrayAllocationSize(int length, int headerSize, int log2ElementSize, GraalHotSpotVMConfig config) {
+        int alignment = config.objectAlignment;
         int size = (length << log2ElementSize) + headerSize + (alignment - 1);
         int mask = ~(alignment - 1);
         return size & mask;
@@ -614,12 +632,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int g1CardQueueIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1CardQueueIndexOffset();
+        return config.g1CardQueueIndexOffset;
     }
 
     @Fold
     public static int g1CardQueueBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1CardQueueBufferOffset();
+        return config.g1CardQueueBufferOffset;
     }
 
     @Fold
@@ -629,17 +647,17 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int g1SATBQueueMarkingOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1SATBQueueMarkingOffset();
+        return config.g1SATBQueueMarkingOffset;
     }
 
     @Fold
     public static int g1SATBQueueIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1SATBQueueIndexOffset();
+        return config.g1SATBQueueIndexOffset;
     }
 
     @Fold
     public static int g1SATBQueueBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1SATBQueueBufferOffset();
+        return config.g1SATBQueueBufferOffset;
     }
 
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
@@ -1005,4 +1023,9 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity METASPACE_ARRAY_LENGTH_LOCATION = NamedLocationIdentity.immutable("MetaspaceArrayLength");
 
     public static final LocationIdentity SECONDARY_SUPERS_ELEMENT_LOCATION = NamedLocationIdentity.immutable("SecondarySupersElement");
+
+    @Fold
+    public static boolean useFastTLABRefill(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useFastTLABRefill;
+    }
 }

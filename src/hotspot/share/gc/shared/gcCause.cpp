@@ -60,10 +60,6 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _wb_full_gc:
       return "WhiteBox Initiated Full GC";
 
-    case _update_allocation_context_stats_inc:
-    case _update_allocation_context_stats_full:
-      return "Update Allocation Context Stats";
-
     case _no_gc:
       return "No GC";
 
@@ -108,6 +104,21 @@ const char* GCCause::to_string(GCCause::Cause cause) {
 
     case _dcmd_gc_run:
       return "Diagnostic Command";
+
+    case _z_timer:
+      return "Timer";
+
+    case _z_warmup:
+      return "Warmup";
+
+    case _z_allocation_rate:
+      return "Allocation Rate";
+
+    case _z_allocation_stall:
+      return "Allocation Stall";
+
+    case _z_proactive:
+      return "Proactive";
 
     case _last_gc_cause:
       return "ILLEGAL VALUE - last gc cause - ILLEGAL VALUE";

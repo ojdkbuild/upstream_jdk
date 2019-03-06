@@ -52,8 +52,6 @@ class GCCause : public AllStatic {
     _wb_young_gc,
     _wb_conc_mark,
     _wb_full_gc,
-    _update_allocation_context_stats_inc,
-    _update_allocation_context_stats_full,
 
     /* implementation independent, but reserved for GC use */
     _no_gc,
@@ -79,6 +77,12 @@ class GCCause : public AllStatic {
     _g1_humongous_allocation,
 
     _dcmd_gc_run,
+
+    _z_timer,
+    _z_warmup,
+    _z_allocation_rate,
+    _z_allocation_stall,
+    _z_proactive,
 
     _last_gc_cause
   };

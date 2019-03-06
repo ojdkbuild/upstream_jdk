@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.graph;
 
 public final class NodeStack {
@@ -72,6 +74,10 @@ public final class NodeStack {
 
     public boolean isEmpty() {
         return tos == 0;
+    }
+
+    public void clear() {
+        tos = 0;
     }
 
     @Override

@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes.virtual;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Extension;
@@ -35,6 +37,7 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
@@ -71,10 +74,7 @@ public final class AllocatedObjectNode extends FloatingNode implements Virtualiz
     }
 
     @Override
-    public ValueNode length() {
-        if (virtualObject instanceof ArrayLengthProvider) {
-            return ((ArrayLengthProvider) virtualObject).length();
-        }
-        return null;
+    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
+        return GraphUtil.arrayLength(virtualObject, mode);
     }
 }

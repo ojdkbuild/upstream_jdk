@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.phases.graph;
 
 import java.util.ArrayDeque;
@@ -27,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Set;
 
+import jdk.internal.vm.compiler.collections.EconomicMap;
+import jdk.internal.vm.compiler.collections.Equivalence;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -41,8 +45,6 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.util.Equivalence;
-import org.graalvm.util.EconomicMap;
 
 /**
  * A PostOrderNodeIterator iterates the fixed nodes of the graph in post order starting from a

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
+import sun.java2d.pipe.Region;
 import sun.print.ProxyPrintGraphics;
 import sun.awt.*;
 import java.io.*;
@@ -2138,6 +2139,15 @@ public class SwingUtilities2 {
         return -1;
     }
 
+    /**
+     * Sets the InputEvent.ALT_GRAPH mask on any modifier passed to the function
+     * @param modifier the modifier passed
+     * @return the modifier retiurned with ALT_GRAPH flag set
+     */
+    public static int setAltGraphMask(int modifier) {
+        return (modifier | InputEvent.ALT_GRAPH_DOWN_MASK);
+    }
+
     @SuppressWarnings("deprecation")
     public static int getSystemMnemonicKeyMask() {
         Toolkit toolkit = Toolkit.getDefaultToolkit();
@@ -2238,35 +2248,6 @@ public class SwingUtilities2 {
         }
 
         return UIManager.getBoolean(key);
-    }
-
-    /**
-     *
-     * Returns the graphics configuration which bounds contain the given
-     * point
-     *
-     * @param current the default configuration which is checked in the first place
-     * @param x the x coordinate of the given point
-     * @param y the y coordinate of the given point
-     * @return the graphics configuration
-     */
-    public static GraphicsConfiguration getGraphicsConfigurationAtPoint(GraphicsConfiguration current, double x, double y) {
-
-        if (current.getBounds().contains(x, y)) {
-            return current;
-        }
-
-        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice[] devices = env.getScreenDevices();
-
-        for (GraphicsDevice device : devices) {
-            GraphicsConfiguration config = device.getDefaultConfiguration();
-            if (config.getBounds().contains(x, y)) {
-                return config;
-            }
-        }
-
-        return current;
     }
 
     /**

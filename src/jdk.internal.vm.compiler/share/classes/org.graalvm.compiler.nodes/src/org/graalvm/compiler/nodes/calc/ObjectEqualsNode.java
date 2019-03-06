@@ -20,9 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes.calc;
 
-import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -49,7 +52,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.options.OptionValues;
 
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends PointerEqualsNode implements Virtualizable {
@@ -64,7 +66,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
-        LogicNode result = CompareNode.tryConstantFold(Condition.EQ, x, y, constantReflection, false);
+        LogicNode result = CompareNode.tryConstantFold(CanonicalCondition.EQ, x, y, constantReflection, false);
         if (result != null) {
             return result;
         } else {
@@ -77,7 +79,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     }
 
     public static LogicNode create(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, ValueNode x, ValueNode y, NodeView view) {
-        LogicNode result = OP.canonical(constantReflection, metaAccess, options, null, Condition.EQ, false, x, y, view);
+        LogicNode result = OP.canonical(constantReflection, metaAccess, options, null, CanonicalCondition.EQ, false, x, y, view);
         if (result != null) {
             return result;
         }
@@ -87,7 +89,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), Condition.EQ, false, forX, forY, view);
+        ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), CanonicalCondition.EQ, false, forX, forY, view);
         if (value != null) {
             return value;
         }
@@ -98,7 +100,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
 
         @Override
         protected LogicNode canonicalizeSymmetricConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
-                        Condition condition, Constant constant, ValueNode nonConstant, boolean mirrored, boolean unorderedIsTrue, NodeView view) {
+                        CanonicalCondition condition, Constant constant, ValueNode nonConstant, boolean mirrored, boolean unorderedIsTrue, NodeView view) {
             ResolvedJavaType type = constantReflection.asJavaType(constant);
             if (type != null && nonConstant instanceof GetClassNode) {
                 GetClassNode getClassNode = (GetClassNode) nonConstant;

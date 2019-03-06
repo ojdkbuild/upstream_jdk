@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes.java;
 
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -38,8 +40,12 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
     public static final NodeClass<AbstractNewArrayNode> TYPE = NodeClass.create(AbstractNewArrayNode.class);
     @Input protected ValueNode length;
 
-    @Override
     public ValueNode length() {
+        return length;
+    }
+
+    @Override
+    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
         return length;
     }
 

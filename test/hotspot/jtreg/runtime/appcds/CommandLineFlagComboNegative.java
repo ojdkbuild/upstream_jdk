@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,7 @@
  *          the dump and execute steps, in such way that they cause errors
  *          E.g. use compressed oops for creating and archive, but then
  *               execute w/o compressed oops
- * AppCDS does not support uncompressed oops
- * @requires (vm.opt.UseCompressedOops == null) | (vm.opt.UseCompressedOops == true)
+ * @requires vm.cds
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
@@ -72,6 +71,8 @@ public class CommandLineFlagComboNegative {
                 "Class data sharing is inconsistent with other specified options", 1) );
             testTable.add( new TestVector("-XX:+UseCompressedClassPointers", "-XX:-UseCompressedClassPointers",
                 "Class data sharing is inconsistent with other specified options", 1) );
+            testTable.add( new TestVector("-XX:-UseAppCDS", "-XX:+UseAppCDS",
+                "Ignoring obsolete option UseAppCDS; AppCDS is automatically enabled", 0) );
         }
     }
 

@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -123,19 +125,19 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
 
     public static int test6Snippet(int a) {
         if ((a & 8) != 0) {
-            GraalDirectives.deoptimizeAndInvalidate();
+            GraalDirectives.deoptimize();
         }
         if ((a & 15) != 15) {
-            GraalDirectives.deoptimizeAndInvalidate();
+            GraalDirectives.deoptimize();
         }
         return 0;
     }
 
     public static int reference6Snippet(int a) {
         if ((a & 8) != 0) {
-            GraalDirectives.deoptimizeAndInvalidate();
+            GraalDirectives.deoptimize();
         }
-        GraalDirectives.deoptimizeAndInvalidate();
+        GraalDirectives.deoptimize();
         return 0;
     }
 

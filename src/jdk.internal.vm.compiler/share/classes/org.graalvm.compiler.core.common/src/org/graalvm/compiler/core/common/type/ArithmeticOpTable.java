@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.core.common.type;
 
 import static jdk.vm.ci.meta.MetaUtil.getSimpleName;
@@ -27,6 +29,9 @@ import static jdk.vm.ci.meta.MetaUtil.getSimpleName;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
+
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaKind;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
@@ -50,9 +55,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Neg;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import org.graalvm.util.CollectionsUtil;
-
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Information about arithmetic operations.

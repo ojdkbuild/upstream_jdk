@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
@@ -35,6 +37,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.useCMSIncrementalMode;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.useFastTLABRefill;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.formatArray;
 import static org.graalvm.compiler.hotspot.stubs.NewInstanceStub.refillAllocate;
@@ -59,7 +62,7 @@ import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.word.WordFactory;
+import jdk.internal.vm.compiler.word.WordFactory;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -122,7 +125,8 @@ public class NewArrayStub extends SnippetStub {
         // check that array length is small enough for fast path.
         Word thread = registerAsWord(threadRegister);
         boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
-        if (inlineContiguousAllocationSupported && !useCMSIncrementalMode(INJECTED_VMCONFIG) && length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
+        if (useFastTLABRefill(INJECTED_VMCONFIG) && inlineContiguousAllocationSupported && !useCMSIncrementalMode(INJECTED_VMCONFIG) && length >= 0 &&
+                        length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging(options));
             if (memory.notEqual(0)) {
                 if (logging(options)) {

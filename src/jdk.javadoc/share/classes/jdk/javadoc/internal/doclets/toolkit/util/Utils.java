@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,15 +74,13 @@ import com.sun.source.doctree.DocTree;
 import com.sun.source.doctree.DocTree.Kind;
 import com.sun.source.doctree.ParamTree;
 import com.sun.source.doctree.SerialFieldTree;
-import com.sun.source.doctree.StartElementTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.LineMap;
 import com.sun.source.util.DocSourcePositions;
 import com.sun.source.util.DocTrees;
-import com.sun.source.util.SimpleDocTreeVisitor;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.model.JavacTypes;
-import jdk.javadoc.internal.doclets.formats.html.HtmlConfiguration;
+import jdk.javadoc.internal.doclets.formats.html.SearchIndexItem;
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
 import jdk.javadoc.internal.doclets.toolkit.CommentUtils.DocCommentDuo;
 import jdk.javadoc.internal.doclets.toolkit.Messages;
@@ -95,7 +93,6 @@ import static javax.lang.model.type.TypeKind.*;
 
 import static com.sun.source.doctree.DocTree.Kind.*;
 import static jdk.javadoc.internal.doclets.toolkit.builders.ConstantsSummaryBuilder.MAX_CONSTANT_VALUE_INDEX_LENGTH;
-
 
 /**
  * Utilities Class for Doclets.
@@ -807,9 +804,8 @@ public class Utils {
             if (te == null) {
                 return null;
             }
-            VisibleMemberMap vmm = configuration.getVisibleMemberMap(te,
-                    VisibleMemberMap.Kind.METHODS);
-            for (Element e : vmm.getMembers(te)) {
+            VisibleMemberTable vmt = configuration.getVisibleMemberTable(te);
+            for (Element e : vmt.getMembers(VisibleMemberTable.Kind.METHODS)) {
                 ExecutableElement ee = (ExecutableElement)e;
                 if (configuration.workArounds.overrides(method, ee, origin) &&
                         !isSimpleOverride(ee)) {
@@ -1168,7 +1164,7 @@ public class Utils {
         }
         TypeElement superClass = asTypeElement(superType);
         // skip "hidden" classes
-        while ((superClass != null && isHidden(superClass))
+        while ((superClass != null && hasHiddenTag(superClass))
                 || (superClass != null &&  !isPublic(superClass) && !isLinkable(superClass))) {
             TypeMirror supersuperType = superClass.getSuperclass();
             TypeElement supersuperClass = asTypeElement(supersuperType);
@@ -1343,6 +1339,16 @@ public class Utils {
     }
 
     /**
+     * Returns a locale independent upper cased String. That is, it
+     * always uses US locale, this is a clone of the one in StringUtils.
+     * @param s to convert
+     * @return converted String
+     */
+    public static String toUpperCase(String s) {
+        return s.toUpperCase(Locale.US);
+    }
+
+    /**
      * Returns a locale independent lower cased String. That is, it
      * always uses US locale, this is a clone of the one in StringUtils.
      * @param s to convert
@@ -1417,7 +1423,7 @@ public class Utils {
      * @param e the queried element
      * @return true if it exists, false otherwise
      */
-    public boolean isHidden(Element e) {
+    public boolean hasHiddenTag(Element e) {
         // prevent needless tests on elements which are not included
         if (!isIncluded(e)) {
             return false;
@@ -1463,14 +1469,14 @@ public class Utils {
                 new TreeSet<>(makeGeneralPurposeComparator());
         if (!javafx) {
             for (Element te : classlist) {
-                if (!isHidden(te)) {
+                if (!hasHiddenTag(te)) {
                     filteredOutClasses.add((TypeElement)te);
                 }
             }
             return filteredOutClasses;
         }
         for (Element e : classlist) {
-            if (isPrivate(e) || isPackagePrivate(e) || isHidden(e)) {
+            if (isPrivate(e) || isPackagePrivate(e) || hasHiddenTag(e)) {
                 continue;
             }
             filteredOutClasses.add((TypeElement)e);
@@ -2074,6 +2080,48 @@ public class Utils {
         }
     }
 
+    /**
+     * Returns a Comparator for SearchIndexItems representing types. Items are
+     * compared by short name, or full string representation if names are equal.
+     *
+     * @return a Comparator
+     */
+    public Comparator<SearchIndexItem> makeTypeSearchIndexComparator() {
+        return (SearchIndexItem sii1, SearchIndexItem sii2) -> {
+            int result = compareStrings(sii1.getSimpleName(), sii2.getSimpleName());
+            if (result == 0) {
+                // TreeSet needs this to be consistent with equal so we do
+                // a plain comparison of string representations as fallback.
+                result = sii1.toString().compareTo(sii2.toString());
+            }
+            return result;
+        };
+    }
+
+    private Comparator<SearchIndexItem> genericSearchIndexComparator = null;
+    /**
+     * Returns a Comparator for SearchIndexItems representing modules, packages, or members.
+     * Items are compared by label (member name plus signature for members, package name for
+     * packages, and module name for modules). If labels are equal then full string
+     * representation is compared.
+     *
+     * @return a Comparator
+     */
+    public Comparator<SearchIndexItem> makeGenericSearchIndexComparator() {
+        if (genericSearchIndexComparator == null) {
+            genericSearchIndexComparator = (SearchIndexItem sii1, SearchIndexItem sii2) -> {
+                int result = compareStrings(sii1.getLabel(), sii2.getLabel());
+                if (result == 0) {
+                    // TreeSet needs this to be consistent with equal so we do
+                    // a plain comparison of string representations as fallback.
+                    result = sii1.toString().compareTo(sii2.toString());
+                }
+                return result;
+            };
+        }
+        return genericSearchIndexComparator;
+    }
+
     public Iterable<TypeElement> getEnclosedTypeElements(PackageElement pkg) {
         List<TypeElement> out = getInterfaces(pkg);
         out.addAll(getClasses(pkg));
@@ -2247,18 +2295,6 @@ public class Utils {
         return convertToTypeElement(getItems(e, false, INTERFACE));
     }
 
-    List<Element> getNestedClasses(TypeElement e) {
-        List<Element> result = new ArrayList<>();
-        recursiveGetItems(result, e, true, CLASS);
-        return result;
-    }
-
-    List<Element> getNestedClassesUnfiltered(TypeElement e) {
-        List<Element> result = new ArrayList<>();
-        recursiveGetItems(result, e, false, CLASS);
-        return result;
-    }
-
     public List<Element> getEnumConstants(Element e) {
         return getItems(e, true, ENUM_CONSTANT);
     }
@@ -2382,7 +2418,6 @@ public class Utils {
     }
 
     EnumSet<ElementKind> nestedKinds = EnumSet.of(ANNOTATION_TYPE, CLASS, ENUM, INTERFACE);
-
     void recursiveGetItems(Collection<Element> list, Element e, boolean filter, ElementKind... select) {
         list.addAll(getItems0(e, filter, select));
         List<Element> classes = getItems0(e, filter, nestedKinds);
@@ -2412,7 +2447,8 @@ public class Utils {
     }
 
     private SimpleElementVisitor9<Boolean, Void> shouldDocumentVisitor = null;
-    private boolean shouldDocument(Element e) {
+
+    protected boolean shouldDocument(Element e) {
         if (shouldDocumentVisitor == null) {
             shouldDocumentVisitor = new SimpleElementVisitor9<Boolean, Void>() {
                 private boolean hasSource(TypeElement e) {
@@ -2423,6 +2459,10 @@ public class Utils {
                 // handle types
                 @Override
                 public Boolean visitType(TypeElement e, Void p) {
+                    // treat inner classes etc as members
+                    if (e.getNestingKind().isNested()) {
+                        return defaultAction(e, p);
+                    }
                     return configuration.docEnv.isSelected(e) && hasSource(e);
                 }
 
@@ -2508,6 +2548,7 @@ public class Utils {
             return null;
         while (!(kind.isClass() || kind.isInterface())) {
             encl = encl.getEnclosingElement();
+            kind = encl.getKind();
         }
         return (TypeElement)encl;
     }
@@ -2882,7 +2923,7 @@ public class Utils {
             case "throws":
             case "exception":
             case "version":
-                kind = DocTree.Kind.valueOf(tagName.toUpperCase());
+                kind = DocTree.Kind.valueOf(toUpperCase(tagName));
                 return getBlockTags(element, kind);
             case "serialData":
                 kind = SERIAL_DATA;
@@ -3273,6 +3314,12 @@ public class Utils {
         public Pair(K first, L second) {
             this.first = first;
             this.second = second;
+        }
+
+        public String toString() {
+            StringBuffer out = new StringBuffer();
+            out.append(first + ":" + second);
+            return out.toString();
         }
     }
 }

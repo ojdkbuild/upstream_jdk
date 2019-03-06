@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,8 @@
 
 package jdk.javadoc.internal.doclets.toolkit.util.links;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
@@ -39,7 +37,6 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.SimpleTypeVisitor9;
 
-import jdk.javadoc.internal.doclets.formats.html.LinkInfoImpl;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.util.Utils;
 
@@ -54,6 +51,11 @@ import jdk.javadoc.internal.doclets.toolkit.util.Utils;
  * @author Jamie Ho
  */
 public abstract class LinkFactory {
+    protected final Utils utils;
+
+    protected LinkFactory(Utils utils) {
+        this.utils = utils;
+    }
 
     /**
      * Return an empty instance of a content object.
@@ -69,7 +71,6 @@ public abstract class LinkFactory {
      * @return the output of the link.
      */
     public Content getLink(LinkInfo linkInfo) {
-        Utils utils = ((LinkInfoImpl) linkInfo).configuration.utils;
         if (linkInfo.type != null) {
             SimpleTypeVisitor9<Content, LinkInfo> linkVisitor =
                     new SimpleTypeVisitor9<Content, LinkInfo>() {
@@ -207,77 +208,32 @@ public abstract class LinkFactory {
     }
 
     /**
-     * Return the link to the given class.
+     * Returns a link to the given class.
      *
-     * @param linkInfo the information about the link to construct.
+     * @param linkInfo the information about the link to construct
      *
      * @return the link for the given class.
      */
     protected abstract Content getClassLink(LinkInfo linkInfo);
 
     /**
-     * Return the link to the given type parameter.
+     * Returns links to the type parameters.
      *
-     * @param linkInfo     the information about the link to construct.
-     * @param typeParam the type parameter to link to.
+     * @param linkInfo     the information about the link to construct
+     * @param isClassLabel true if this is a class label, or false if it is
+     *                     the type parameters portion of the link
+     * @return the links to the type parameters
      */
-    protected abstract Content getTypeParameterLink(LinkInfo linkInfo, TypeMirror typeParam);
+    protected abstract Content getTypeParameterLinks(LinkInfo linkInfo, boolean isClassLabel);
 
     /**
-     * Return the links to the type parameters.
+     * Returns links to the type parameters.
      *
-     * @param linkInfo     the information about the link to construct.
+     * @param linkInfo     the information about the link to construct
      * @return the links to the type parameters.
      */
     public Content getTypeParameterLinks(LinkInfo linkInfo) {
         return getTypeParameterLinks(linkInfo, true);
-    }
-
-    /**
-     * Return the links to the type parameters.
-     *
-     * @param linkInfo     the information about the link to construct.
-     * @param isClassLabel true if this is a class label.  False if it is
-     *                     the type parameters portion of the link.
-     * @return the links to the type parameters.
-     */
-    public Content getTypeParameterLinks(LinkInfo linkInfo, boolean isClassLabel) {
-        Utils utils = ((LinkInfoImpl)linkInfo).utils;
-        Content links = newContent();
-        List<TypeMirror> vars = new ArrayList<>();
-        TypeMirror ctype = linkInfo.type != null
-                ? utils.getComponentType(linkInfo.type)
-                : null;
-        if (linkInfo.executableElement != null) {
-            linkInfo.executableElement.getTypeParameters().stream().forEach((t) -> {
-                vars.add(t.asType());
-            });
-        } else if (linkInfo.type != null && utils.isDeclaredType(linkInfo.type)) {
-            ((DeclaredType)linkInfo.type).getTypeArguments().stream().forEach(vars::add);
-        } else if (ctype != null && utils.isDeclaredType(ctype)) {
-            ((DeclaredType)ctype).getTypeArguments().stream().forEach(vars::add);
-        } else if (linkInfo.typeElement != null) {
-            linkInfo.typeElement.getTypeParameters().stream().forEach((t) -> {
-                vars.add(t.asType());
-            });
-        } else {
-            // Nothing to document.
-            return links;
-        }
-        if (((linkInfo.includeTypeInClassLinkLabel && isClassLabel)
-                || (linkInfo.includeTypeAsSepLink && !isClassLabel)) && !vars.isEmpty()) {
-            links.addContent("<");
-            boolean many = false;
-            for (TypeMirror t : vars) {
-                if (many) {
-                    links.addContent(",");
-                }
-                links.addContent(getTypeParameterLink(linkInfo, t));
-                many = true;
-            }
-            links.addContent(">");
-        }
-        return links;
     }
 
     public abstract Content getTypeAnnotationLinks(LinkInfo linkInfo);

@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -49,7 +51,7 @@ public abstract class ControlSplitNode extends FixedNode implements IterableNode
 
     /**
      * Primary successor of the control split. Data dependencies on the node have to be scheduled in
-     * the primary successor.
+     * the primary successor. Returns null if data dependencies are not expected.
      *
      * @return the primary successor
      */

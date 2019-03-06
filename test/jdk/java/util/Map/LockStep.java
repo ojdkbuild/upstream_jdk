@@ -28,8 +28,19 @@
  * @key randomness
  */
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * Based on the strange scenario required to reproduce
@@ -92,23 +103,21 @@ public class LockStep {
         final Random r = new Random();
 
         for (int i = 0; i < iterations; i++) {
-            List<Map> maps = Arrays.asList(
-                new Map[] {
-                    new IdentityHashMap(11),
-                    new HashMap(16),
-                    new LinkedHashMap(16),
-                    new WeakHashMap(16),
-                    new Hashtable(16),
-                    new TreeMap(),
-                    new ConcurrentHashMap(16),
-                    new ConcurrentSkipListMap(),
-                    Collections.checkedMap(new HashMap(16), Integer.class, Integer.class),
-                    Collections.checkedSortedMap(new TreeMap(), Integer.class, Integer.class),
-                    Collections.checkedNavigableMap(new TreeMap(), Integer.class, Integer.class),
-                    Collections.synchronizedMap(new HashMap(16)),
-                    Collections.synchronizedSortedMap(new TreeMap()),
-                    Collections.synchronizedNavigableMap(new TreeMap())
-                    });
+            List<Map> maps = List.of(
+                new IdentityHashMap(11),
+                new HashMap(16),
+                new LinkedHashMap(16),
+                new WeakHashMap(16),
+                new Hashtable(16),
+                new TreeMap(),
+                new ConcurrentHashMap(16),
+                new ConcurrentSkipListMap(),
+                Collections.checkedMap(new HashMap(16), Integer.class, Integer.class),
+                Collections.checkedSortedMap(new TreeMap(), Integer.class, Integer.class),
+                Collections.checkedNavigableMap(new TreeMap(), Integer.class, Integer.class),
+                Collections.synchronizedMap(new HashMap(16)),
+                Collections.synchronizedSortedMap(new TreeMap()),
+                Collections.synchronizedNavigableMap(new TreeMap()));
 
             for (int j = 0; j < 10; j++)
                 put(maps, r.nextInt(100), r.nextInt(100));

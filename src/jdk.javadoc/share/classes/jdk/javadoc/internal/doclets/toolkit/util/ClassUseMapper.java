@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,8 +46,9 @@ import javax.lang.model.util.SimpleTypeVisitor9;
 import javax.lang.model.util.Types;
 
 import jdk.javadoc.doclet.DocletEnvironment;
-import jdk.javadoc.internal.doclets.formats.html.HtmlConfiguration;
-import jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberMap.Kind;
+import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
+
+import static jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable.Kind.*;
 
 /**
  * Map all class uses for a given class.
@@ -192,7 +193,7 @@ public class ClassUseMapper {
     private final Types typeUtils;
     private final Utils utils;
 
-    public ClassUseMapper(HtmlConfiguration configuration, ClassTree classtree) {
+    public ClassUseMapper(BaseConfiguration configuration, ClassTree classtree) {
         docEnv = configuration.docEnv;
         elementUtils = docEnv.getElementUtils();
         typeUtils = docEnv.getTypeUtils();
@@ -214,7 +215,9 @@ public class ClassUseMapper {
             mapAnnotations(classToPackageAnnotations, pkg, pkg);
             mapTypeParameters(classToClassTypeParam, aClass, aClass);
             mapAnnotations(classToClassAnnotations, aClass, aClass);
-            List<VariableElement> fields = utils.getFields(aClass);
+            VisibleMemberTable vmt = configuration.getVisibleMemberTable(aClass);
+
+            List<VariableElement> fields = ElementFilter.fieldsIn(vmt.getVisibleMembers(FIELDS));
             for (VariableElement fd : fields) {
                 mapTypeParameters(classToFieldTypeParam, fd, fd);
                 mapAnnotations(annotationToField, fd, fd);
@@ -237,14 +240,14 @@ public class ClassUseMapper {
                 stv.visit(fd.asType(), fd);
             }
 
-            List<ExecutableElement> ctors = utils.getConstructors(aClass);
+            List<ExecutableElement> ctors = ElementFilter.constructorsIn(vmt.getMembers(CONSTRUCTORS));
             for (ExecutableElement ctor : ctors) {
                 mapAnnotations(classToConstructorAnnotations, ctor, ctor);
                 mapExecutable(ctor);
             }
 
-            VisibleMemberMap vmm = configuration.getVisibleMemberMap(aClass, Kind.METHODS);
-            List<ExecutableElement> methods = ElementFilter.methodsIn(vmm.getMembers(aClass));
+            List<ExecutableElement> methods = ElementFilter.methodsIn(vmt.getMembers(METHODS));
+
             for (ExecutableElement method : methods) {
                 mapExecutable(method);
                 mapTypeParameters(classToMethodTypeParam, method, method);
@@ -414,11 +417,11 @@ public class ClassUseMapper {
         }
     }
 
-    private <T> List<T> refList(Map<TypeElement, List<T>> map, Element element) {
+    private <T> List<T> refList(Map<TypeElement, List<T>> map, TypeElement element) {
         List<T> list = map.get(element);
         if (list == null) {
             list = new ArrayList<>();
-            map.put((TypeElement) element, list);
+            map.put(element, list);
         }
         return list;
     }
@@ -554,8 +557,8 @@ public class ClassUseMapper {
      * Map the AnnotationType to the members that use them as type parameters.
      *
      * @param map the map the insert the information into.
-     * @param element whose type parameters are being checked.
-     * @param holder the holder that owns the type parameters.
+     * @param e whose type parameters are being checked.
+     * @param holder owning the type parameters.
      */
     private <T extends Element> void mapAnnotations(final Map<TypeElement, List<T>> map,
             Element e, final T holder) {
@@ -570,7 +573,7 @@ public class ClassUseMapper {
             @Override
             public Void visitPackage(PackageElement e, Void p) {
                 for (AnnotationMirror a : e.getAnnotationMirrors()) {
-                    refList(map, a.getAnnotationType().asElement()).add(holder);
+                    refList(map, (TypeElement) a.getAnnotationType().asElement()).add(holder);
                 }
                 return null;
             }

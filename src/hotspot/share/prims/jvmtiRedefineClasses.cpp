@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,13 @@
 #include "classfile/verifier.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
-#include "gc/shared/gcLocker.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/klassVtable.hpp"
 #include "oops/oop.inline.hpp"
@@ -47,7 +46,10 @@
 #include "prims/resolvedMethodTable.hpp"
 #include "prims/methodComparator.hpp"
 #include "runtime/deoptimization.hpp"
+#include "runtime/handles.inline.hpp"
+#include "runtime/jniHandles.inline.hpp"
 #include "runtime/relocator.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "utilities/events.hpp"
 
@@ -497,6 +499,7 @@ void VM_RedefineClasses::append_entry(const constantPoolHandle& scratch_cp,
     } break;
 
     // this is an indirect CP entry so it needs special handling
+    case JVM_CONSTANT_Dynamic:  // fall through
     case JVM_CONSTANT_InvokeDynamic:
     {
       // Index of the bootstrap specifier in the operands array
@@ -509,15 +512,18 @@ void VM_RedefineClasses::append_entry(const constantPoolHandle& scratch_cp,
                                                     merge_cp_length_p, THREAD);
       if (new_bs_i != old_bs_i) {
         log_trace(redefine, class, constantpool)
-          ("InvokeDynamic entry@%d bootstrap_method_attr_index change: %d to %d",
+          ("Dynamic entry@%d bootstrap_method_attr_index change: %d to %d",
            *merge_cp_length_p, old_bs_i, new_bs_i);
       }
       if (new_ref_i != old_ref_i) {
         log_trace(redefine, class, constantpool)
-          ("InvokeDynamic entry@%d name_and_type_index change: %d to %d", *merge_cp_length_p, old_ref_i, new_ref_i);
+          ("Dynamic entry@%d name_and_type_index change: %d to %d", *merge_cp_length_p, old_ref_i, new_ref_i);
       }
 
-      (*merge_cp_p)->invoke_dynamic_at_put(*merge_cp_length_p, new_bs_i, new_ref_i);
+      if (scratch_cp->tag_at(scratch_i).is_dynamic_constant())
+        (*merge_cp_p)->dynamic_constant_at_put(*merge_cp_length_p, new_bs_i, new_ref_i);
+      else
+        (*merge_cp_p)->invoke_dynamic_at_put(*merge_cp_length_p, new_bs_i, new_ref_i);
       if (scratch_i != *merge_cp_length_p) {
         // The new entry in *merge_cp_p is at a different index than
         // the new entry in scratch_cp so we need to map the index values.
@@ -677,6 +683,95 @@ void VM_RedefineClasses::finalize_operands_merge(const constantPoolHandle& merge
   _operands_index_map_count = 0;
 } // end finalize_operands_merge()
 
+// Symbol* comparator for qsort
+// The caller must have an active ResourceMark.
+static int symcmp(const void* a, const void* b) {
+  char* astr = (*(Symbol**)a)->as_C_string();
+  char* bstr = (*(Symbol**)b)->as_C_string();
+  return strcmp(astr, bstr);
+}
+
+static jvmtiError check_nest_attributes(InstanceKlass* the_class,
+                                        InstanceKlass* scratch_class) {
+  // Check whether the class NestHost attribute has been changed.
+  Thread* thread = Thread::current();
+  ResourceMark rm(thread);
+  JvmtiThreadState *state = JvmtiThreadState::state_for((JavaThread*)thread);
+  u2 the_nest_host_idx = the_class->nest_host_index();
+  u2 scr_nest_host_idx = scratch_class->nest_host_index();
+
+  if (the_nest_host_idx != 0 && scr_nest_host_idx != 0) {
+    Symbol* the_sym = the_class->constants()->klass_name_at(the_nest_host_idx);
+    Symbol* scr_sym = scratch_class->constants()->klass_name_at(scr_nest_host_idx);
+    if (the_sym != scr_sym) {
+      log_trace(redefine, class, nestmates)
+        ("redefined class %s attribute change error: NestHost class: %s replaced with: %s",
+         the_class->external_name(), the_sym->as_C_string(), scr_sym->as_C_string());
+      return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_CLASS_ATTRIBUTE_CHANGED;
+    }
+  } else if ((the_nest_host_idx == 0) ^ (scr_nest_host_idx == 0)) {
+    const char* action_str = (the_nest_host_idx != 0) ? "removed" : "added";
+    log_trace(redefine, class, nestmates)
+      ("redefined class %s attribute change error: NestHost attribute %s",
+       the_class->external_name(), action_str);
+    return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_CLASS_ATTRIBUTE_CHANGED;
+  }
+
+  // Check whether the class NestMembers attribute has been changed.
+  Array<u2>* the_nest_members = the_class->nest_members();
+  Array<u2>* scr_nest_members = scratch_class->nest_members();
+  bool the_members_exists = the_nest_members != Universe::the_empty_short_array();
+  bool scr_members_exists = scr_nest_members != Universe::the_empty_short_array();
+
+  int members_len = the_nest_members->length();
+  if (the_members_exists && scr_members_exists) {
+    if (members_len != scr_nest_members->length()) {
+      log_trace(redefine, class, nestmates)
+        ("redefined class %s attribute change error: NestMember len=%d changed to len=%d",
+         the_class->external_name(), members_len, scr_nest_members->length());
+      return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_CLASS_ATTRIBUTE_CHANGED;
+    }
+
+    // The order of entries in the NestMembers array is not specified so we
+    // have to explicitly check for the same contents. We do this by copying
+    // the referenced symbols into their own arrays, sorting them and then
+    // comparing each element pair.
+
+    Symbol** the_syms = NEW_RESOURCE_ARRAY_RETURN_NULL(Symbol*, members_len);
+    Symbol** scr_syms = NEW_RESOURCE_ARRAY_RETURN_NULL(Symbol*, members_len);
+
+    if (the_syms == NULL || scr_syms == NULL) {
+      return JVMTI_ERROR_OUT_OF_MEMORY;
+    }
+
+    for (int i = 0; i < members_len; i++) {
+      int the_cp_index = the_nest_members->at(i);
+      int scr_cp_index = scr_nest_members->at(i);
+      the_syms[i] = the_class->constants()->klass_name_at(the_cp_index);
+      scr_syms[i] = scratch_class->constants()->klass_name_at(scr_cp_index);
+    }
+
+    qsort(the_syms, members_len, sizeof(Symbol*), symcmp);
+    qsort(scr_syms, members_len, sizeof(Symbol*), symcmp);
+
+    for (int i = 0; i < members_len; i++) {
+      if (the_syms[i] != scr_syms[i]) {
+        log_trace(redefine, class, nestmates)
+          ("redefined class %s attribute change error: NestMembers[%d]: %s changed to %s",
+           the_class->external_name(), i, the_syms[i]->as_C_string(), scr_syms[i]->as_C_string());
+        return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_CLASS_ATTRIBUTE_CHANGED;
+      }
+    }
+  } else if (the_members_exists ^ scr_members_exists) {
+    const char* action_str = (the_members_exists) ? "removed" : "added";
+    log_trace(redefine, class, nestmates)
+      ("redefined class %s attribute change error: NestMembers attribute %s",
+       the_class->external_name(), action_str);
+    return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_CLASS_ATTRIBUTE_CHANGED;
+  }
+
+  return JVMTI_ERROR_NONE;
+}
 
 jvmtiError VM_RedefineClasses::compare_and_normalize_class_versions(
              InstanceKlass* the_class,
@@ -717,6 +812,12 @@ jvmtiError VM_RedefineClasses::compare_and_normalize_class_versions(
   if (the_class->is_in_error_state()) {
     // TBD #5057930: special error code is needed in 1.6
     return JVMTI_ERROR_INVALID_CLASS;
+  }
+
+  // Check whether the nest-related attributes have been changed.
+  jvmtiError err = check_nest_attributes(the_class, scratch_class);
+  if (err != JVMTI_ERROR_NONE) {
+    return err;
   }
 
   // Check whether class modifiers are the same.
@@ -1592,6 +1693,12 @@ jvmtiError VM_RedefineClasses::merge_cp_and_rewrite(
 bool VM_RedefineClasses::rewrite_cp_refs(InstanceKlass* scratch_class,
        TRAPS) {
 
+  // rewrite constant pool references in the nest attributes:
+  if (!rewrite_cp_refs_in_nest_attributes(scratch_class)) {
+    // propagate failure back to caller
+    return false;
+  }
+
   // rewrite constant pool references in the methods:
   if (!rewrite_cp_refs_in_methods(scratch_class, THREAD)) {
     // propagate failure back to caller
@@ -1673,6 +1780,22 @@ bool VM_RedefineClasses::rewrite_cp_refs(InstanceKlass* scratch_class,
 
   return true;
 } // end rewrite_cp_refs()
+
+// Rewrite constant pool references in the NestHost and NestMembers attributes.
+bool VM_RedefineClasses::rewrite_cp_refs_in_nest_attributes(
+       InstanceKlass* scratch_class) {
+
+  u2 cp_index = scratch_class->nest_host_index();
+  if (cp_index != 0) {
+    scratch_class->set_nest_host_index(find_new_index(cp_index));
+  }
+  Array<u2>* nest_members = scratch_class->nest_members();
+  for (int i = 0; i < nest_members->length(); i++) {
+    u2 cp_index = nest_members->at(i);
+    nest_members->at_put(i, find_new_index(cp_index));
+  }
+  return true;
+}
 
 // Rewrite constant pool references in the methods.
 bool VM_RedefineClasses::rewrite_cp_refs_in_methods(

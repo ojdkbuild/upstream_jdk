@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.code;
 
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
@@ -40,7 +42,7 @@ public final class DataSection implements Iterable<Data> {
 
     public interface Patches {
 
-        void registerPatch(VMConstant c);
+        void registerPatch(int position, VMConstant c);
     }
 
     public abstract static class Data {

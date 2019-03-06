@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,6 @@ public class Types {
     JCDiagnostic.Factory diags;
     List<Warner> warnStack = List.nil();
     final Name capturedName;
-    private final FunctionDescriptorLookupError functionDescriptorLookupError;
 
     public final Warner noWarnings;
 
@@ -122,7 +121,6 @@ public class Types {
         capturedName = names.fromString("<captured wildcard>");
         messages = JavacMessages.instance(context);
         diags = JCDiagnostic.Factory.instance(context);
-        functionDescriptorLookupError = new FunctionDescriptorLookupError();
         noWarnings = new Warner(null);
     }
     // </editor-fold>
@@ -678,10 +676,21 @@ public class Types {
 
             public Type getType(Type site) {
                 site = removeWildcards(site);
-                if (!chk.checkValidGenericType(site)) {
-                    //if the inferred functional interface type is not well-formed,
-                    //or if it's not a subtype of the original target, issue an error
-                    throw failure(diags.fragment(Fragments.NoSuitableFunctionalIntfInst(site)));
+                if (site.isIntersection()) {
+                    IntersectionClassType ict = (IntersectionClassType)site;
+                    for (Type component : ict.getExplicitComponents()) {
+                        if (!chk.checkValidGenericType(component)) {
+                            //if the inferred functional interface type is not well-formed,
+                            //or if it's not a subtype of the original target, issue an error
+                            throw failure(diags.fragment(Fragments.NoSuitableFunctionalIntfInst(site)));
+                        }
+                    }
+                } else {
+                    if (!chk.checkValidGenericType(site)) {
+                        //if the inferred functional interface type is not well-formed,
+                        //or if it's not a subtype of the original target, issue an error
+                        throw failure(diags.fragment(Fragments.NoSuitableFunctionalIntfInst(site)));
+                    }
                 }
                 return memberType(site, descSym);
             }
@@ -796,7 +805,7 @@ public class Types {
         }
 
         FunctionDescriptorLookupError failure(JCDiagnostic diag) {
-            return functionDescriptorLookupError.setMessage(diag);
+            return new FunctionDescriptorLookupError().setMessage(diag);
         }
     }
 
@@ -887,12 +896,12 @@ public class Types {
      * main purposes: (i) checking well-formedness of a functional interface;
      * (ii) perform functional interface bridge calculation.
      */
-    public ClassSymbol makeFunctionalInterfaceClass(Env<AttrContext> env, Name name, List<Type> targets, long cflags) {
-        if (targets.isEmpty()) {
+    public ClassSymbol makeFunctionalInterfaceClass(Env<AttrContext> env, Name name, Type target, long cflags) {
+        if (target == null || target == syms.unknownType) {
             return null;
         }
-        Symbol descSym = findDescriptorSymbol(targets.head.tsym);
-        Type descType = findDescriptorType(targets.head);
+        Symbol descSym = findDescriptorSymbol(target.tsym);
+        Type descType = findDescriptorType(target);
         ClassSymbol csym = new ClassSymbol(cflags, name, env.enclClass.sym.outermostClass());
         csym.completer = Completer.NULL_COMPLETER;
         csym.members_field = WriteableScope.create(csym);
@@ -900,7 +909,9 @@ public class Types {
         csym.members_field.enter(instDescSym);
         Type.ClassType ctype = new Type.ClassType(Type.noType, List.nil(), csym);
         ctype.supertype_field = syms.objectType;
-        ctype.interfaces_field = targets;
+        ctype.interfaces_field = target.isIntersection() ?
+                directSupertypes(target) :
+                List.of(target);
         csym.type = ctype;
         csym.sourcefile = ((ClassSymbol)csym.owner).sourcefile;
         return csym;
@@ -1291,12 +1302,9 @@ public class Types {
      * lists are of different length, return false.
      */
     public boolean isSameTypes(List<Type> ts, List<Type> ss) {
-        return isSameTypes(ts, ss, false);
-    }
-    public boolean isSameTypes(List<Type> ts, List<Type> ss, boolean strict) {
         while (ts.tail != null && ss.tail != null
                /*inlined: ts.nonEmpty() && ss.nonEmpty()*/ &&
-               isSameType(ts.head, ss.head, strict)) {
+               isSameType(ts.head, ss.head)) {
             ts = ts.tail;
             ss = ss.tail;
         }
@@ -1325,15 +1333,15 @@ public class Types {
      * Is t the same type as s?
      */
     public boolean isSameType(Type t, Type s) {
-        return isSameType(t, s, false);
-    }
-    public boolean isSameType(Type t, Type s, boolean strict) {
-        return strict ?
-                isSameTypeStrict.visit(t, s) :
-                isSameTypeLoose.visit(t, s);
+        return isSameTypeVisitor.visit(t, s);
     }
     // where
-        abstract class SameTypeVisitor extends TypeRelation {
+
+        /**
+         * Type-equality relation - type variables are considered
+         * equals if they share the same object identity.
+         */
+        TypeRelation isSameTypeVisitor = new TypeRelation() {
 
             public Boolean visitType(Type t, Type s) {
                 if (t.equalsIgnoreMetadata(s))
@@ -1350,7 +1358,7 @@ public class Types {
                     if (s.hasTag(TYPEVAR)) {
                         //type-substitution does not preserve type-var types
                         //check that type var symbols and bounds are indeed the same
-                        return sameTypeVars((TypeVar)t, (TypeVar)s);
+                        return t == s;
                     }
                     else {
                         //special case for s == ? super X, where upper(s) = u
@@ -1365,8 +1373,6 @@ public class Types {
                 }
             }
 
-            abstract boolean sameTypeVars(TypeVar tv1, TypeVar tv2);
-
             @Override
             public Boolean visitWildcardType(WildcardType t, Type s) {
                 if (!s.hasTag(WILDCARD)) {
@@ -1374,7 +1380,7 @@ public class Types {
                 } else {
                     WildcardType t2 = (WildcardType)s;
                     return (t.kind == t2.kind || (t.isExtendsBound() && s.isExtendsBound())) &&
-                            isSameType(t.type, t2.type, true);
+                            isSameType(t.type, t2.type);
                 }
             }
 
@@ -1411,10 +1417,8 @@ public class Types {
                 }
                 return t.tsym == s.tsym
                     && visit(t.getEnclosingType(), s.getEnclosingType())
-                    && containsTypes(t.getTypeArguments(), s.getTypeArguments());
+                    && containsTypeEquivalent(t.getTypeArguments(), s.getTypeArguments());
             }
-
-            abstract protected boolean containsTypes(List<Type> ts1, List<Type> ts2);
 
             @Override
             public Boolean visitArrayType(ArrayType t, Type s) {
@@ -1470,70 +1474,6 @@ public class Types {
             @Override
             public Boolean visitErrorType(ErrorType t, Type s) {
                 return true;
-            }
-        }
-
-        /**
-         * Standard type-equality relation - type variables are considered
-         * equals if they share the same type symbol.
-         */
-        TypeRelation isSameTypeLoose = new LooseSameTypeVisitor();
-
-        private class LooseSameTypeVisitor extends SameTypeVisitor {
-
-            /** cache of the type-variable pairs being (recursively) tested. */
-            private Set<TypePair> cache = new HashSet<>();
-
-            @Override
-            boolean sameTypeVars(TypeVar tv1, TypeVar tv2) {
-                return tv1.tsym == tv2.tsym && checkSameBounds(tv1, tv2);
-            }
-            @Override
-            protected boolean containsTypes(List<Type> ts1, List<Type> ts2) {
-                return containsTypeEquivalent(ts1, ts2);
-            }
-
-            /**
-             * Since type-variable bounds can be recursive, we need to protect against
-             * infinite loops - where the same bounds are checked over and over recursively.
-             */
-            private boolean checkSameBounds(TypeVar tv1, TypeVar tv2) {
-                TypePair p = new TypePair(tv1, tv2, true);
-                if (cache.add(p)) {
-                    try {
-                        return visit(tv1.getUpperBound(), tv2.getUpperBound());
-                    } finally {
-                        cache.remove(p);
-                    }
-                } else {
-                    return false;
-                }
-            }
-        };
-
-        /**
-         * Strict type-equality relation - type variables are considered
-         * equals if they share the same object identity.
-         */
-        TypeRelation isSameTypeStrict = new SameTypeVisitor() {
-            @Override
-            boolean sameTypeVars(TypeVar tv1, TypeVar tv2) {
-                return tv1 == tv2;
-            }
-            @Override
-            protected boolean containsTypes(List<Type> ts1, List<Type> ts2) {
-                return isSameTypes(ts1, ts2, true);
-            }
-
-            @Override
-            public Boolean visitWildcardType(WildcardType t, Type s) {
-                if (!s.hasTag(WILDCARD)) {
-                    return false;
-                } else {
-                    WildcardType t2 = (WildcardType)s;
-                    return t.kind == t2.kind &&
-                            isSameType(t.type, t2.type, true);
-                }
             }
         };
 
@@ -3848,17 +3788,11 @@ public class Types {
     // where
         class TypePair {
             final Type t1;
-            final Type t2;
-            boolean strict;
+            final Type t2;;
 
             TypePair(Type t1, Type t2) {
-                this(t1, t2, false);
-            }
-
-            TypePair(Type t1, Type t2, boolean strict) {
                 this.t1 = t1;
                 this.t2 = t2;
-                this.strict = strict;
             }
             @Override
             public int hashCode() {
@@ -3869,8 +3803,8 @@ public class Types {
                 if (!(obj instanceof TypePair))
                     return false;
                 TypePair typePair = (TypePair)obj;
-                return isSameType(t1, typePair.t1, strict)
-                    && isSameType(t2, typePair.t2, strict);
+                return isSameType(t1, typePair.t1)
+                    && isSameType(t2, typePair.t2);
             }
         }
         Set<TypePair> mergeCache = new HashSet<>();
@@ -4460,7 +4394,7 @@ public class Types {
                 Type tmpLower = Si.lower.hasTag(UNDETVAR) ? ((UndetVar)Si.lower).qtype : Si.lower;
                 if (!Si.bound.hasTag(ERROR) &&
                     !Si.lower.hasTag(ERROR) &&
-                    isSameType(tmpBound, tmpLower, false)) {
+                    isSameType(tmpBound, tmpLower)) {
                     currentS.head = Si.bound;
                 }
             }
@@ -5066,6 +5000,20 @@ public class Types {
 
     public static abstract class SignatureGenerator {
 
+        public static class InvalidSignatureException extends RuntimeException {
+            private static final long serialVersionUID = 0;
+
+            private final Type type;
+
+            InvalidSignatureException(Type type) {
+                this.type = type;
+            }
+
+            public Type type() {
+                return type;
+            }
+        }
+
         private final Types types;
 
         protected abstract void append(char ch);
@@ -5110,6 +5058,9 @@ public class Types {
                     append('V');
                     break;
                 case CLASS:
+                    if (type.isCompound()) {
+                        throw new InvalidSignatureException(type);
+                    }
                     append('L');
                     assembleClassSig(type);
                     append(';');
@@ -5152,6 +5103,9 @@ public class Types {
                     break;
                 }
                 case TYPEVAR:
+                    if (((TypeVar)type).isCaptured()) {
+                        throw new InvalidSignatureException(type);
+                    }
                     append('T');
                     append(type.tsym.name);
                     append(';');

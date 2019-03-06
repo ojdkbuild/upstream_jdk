@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.test;
 
-import org.graalvm.util.CollectionsUtil;
+
+package org.graalvm.compiler.test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.
@@ -236,7 +239,7 @@ public final class SubprocessUtil {
         return new Subprocess(command, process.waitFor(), output);
     }
 
-    private static final boolean isJava8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+    private static final boolean isJava8OrEarlier = GraalServices.Java8OrEarlier;
 
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {

@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -79,7 +81,7 @@ public class FoldTest extends ReplacementsTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        InjectionProvider injection = new NodeIntrinsificationProvider(getMetaAccess(), getSnippetReflection(), getProviders().getForeignCalls(), null);
+        InjectionProvider injection = new NodeIntrinsificationProvider(getMetaAccess(), getSnippetReflection(), getProviders().getForeignCalls(), getProviders().getLowerer(), null);
         new PluginFactory_FoldTest().registerPlugins(invocationPlugins, injection);
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, TestMethod.class, replacementBytecodeProvider);

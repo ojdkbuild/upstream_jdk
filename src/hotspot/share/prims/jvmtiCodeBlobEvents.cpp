@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 #include "code/codeCache.hpp"
 #include "code/scopeDesc.hpp"
 #include "code/vtableStubs.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/jvmtiCodeBlobEvents.hpp"
@@ -268,7 +269,7 @@ void JvmtiCodeBlobEvents::build_jvmti_addr_location_map(nmethod *nm,
       ScopeDesc *sd  = &sc0;
       while( !sd->is_top() ) { sd = sd->sender(); }
       int bci = sd->bci();
-      if (bci != InvocationEntryBci) {
+      if (bci >= 0) {
         assert(map_length < pcds_in_method, "checking");
         map[map_length].start_address = (const void*)pcd->real_pc(nm);
         map[map_length].location = bci;

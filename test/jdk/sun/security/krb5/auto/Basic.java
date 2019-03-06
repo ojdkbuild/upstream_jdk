@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,15 @@
 
 /*
  * @test
- * @bug 7152176
+ * @bug 7152176 8194486 8201627
  * @summary More krb5 tests
+ * @library /test/lib
  * @compile -XDignore.symbol.file Basic.java
- * @run main/othervm Basic
+ * @run main jdk.test.lib.FileInstaller TestHosts TestHosts
+ * @run main/othervm -Djdk.net.hosts.file=TestHosts Basic
+ * @run main/othervm -Djdk.net.hosts.file=TestHosts
+ *      -Dsun.security.krb5.acceptor.sequence.number.nonmutual=zero
+ *      Basic
  */
 
 import sun.security.jgss.GSSUtil;
@@ -45,6 +50,7 @@ public class Basic {
 
         c.startAsClient(OneKDC.SERVER, GSSUtil.GSS_KRB5_MECH_OID);
         c.x().requestCredDeleg(true);
+        c.x().requestMutualAuth(false);
         s.startAsServer(GSSUtil.GSS_KRB5_MECH_OID);
 
         Context.handshake(c, s);

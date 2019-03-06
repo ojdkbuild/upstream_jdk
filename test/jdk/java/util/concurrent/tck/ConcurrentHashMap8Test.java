@@ -200,8 +200,8 @@ public class ConcurrentHashMap8Test extends JSR166TestCase {
     static Set populatedSet(Integer[] elements) {
         Set<Integer> a = ConcurrentHashMap.<Integer>newKeySet();
         assertTrue(a.isEmpty());
-        for (int i = 0; i < elements.length; i++)
-            assertTrue(a.add(elements[i]));
+        for (Integer element : elements)
+            assertTrue(a.add(element));
         assertFalse(a.isEmpty());
         assertEquals(elements.length, a.size());
         return a;
@@ -212,7 +212,7 @@ public class ConcurrentHashMap8Test extends JSR166TestCase {
      */
     public void testReplaceAll() {
         ConcurrentHashMap<Integer, String> map = map5();
-        map.replaceAll((x, y) -> { return x > 3 ? "Z" : y; });
+        map.replaceAll((x, y) -> (x > 3) ? "Z" : y);
         assertEquals("A", map.get(one));
         assertEquals("B", map.get(two));
         assertEquals("C", map.get(three));

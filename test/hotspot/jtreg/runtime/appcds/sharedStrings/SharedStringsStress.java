@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,7 @@
 /*
  * @test
  * @summary Write a lots of shared strings.
- * Feature support: G1GC only, compressed oops/kptrs, 64-bit os, not on windows
- * @requires (sun.arch.data.model != "32") & (os.family != "windows")
- * @requires (vm.opt.UseCompressedOops == null) | (vm.opt.UseCompressedOops == true)
- * @requires vm.gc.G1
+ * @requires vm.cds.archived.java.heap
  * @library /test/hotspot/jtreg/runtime/appcds /test/lib
  * @modules jdk.jartool/sun.tools.jar
  * @build HelloString
@@ -58,11 +55,7 @@ public class SharedStringsStress {
             out.close();
         }
 
-        // Set NewSize to 8m due to dumping could fail in hs-tier6 testing with
-        // the vm options: -XX:+UnlockCommercialFeatures -XX:+UseDeterministicG1GC
-        // resulting in vm initialization error:
-        // "GC triggered before VM initialization completed. Try increasing NewSize, current value 1331K."
-        OutputAnalyzer dumpOutput = TestCommon.dump(appJar, TestCommon.list("HelloString"), "-XX:NewSize=8m",
+        OutputAnalyzer dumpOutput = TestCommon.dump(appJar, TestCommon.list("HelloString"),
                                                     "-XX:SharedArchiveConfigFile=" + sharedArchiveConfigFile);
         TestCommon.checkDump(dumpOutput);
         OutputAnalyzer execOutput = TestCommon.exec(appJar, "HelloString");

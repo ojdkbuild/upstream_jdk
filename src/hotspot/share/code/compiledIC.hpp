@@ -344,6 +344,7 @@ class CompiledStaticCall : public ResourceObj {
   // Code
   static address emit_to_interp_stub(CodeBuffer &cbuf, address mark = NULL);
   static int to_interp_stub_size();
+  static int to_trampoline_stub_size();
   static int reloc_to_interp_stub();
   static void emit_to_aot_stub(CodeBuffer &cbuf, address mark = NULL);
   static int to_aot_stub_size();
@@ -357,7 +358,7 @@ public:
   virtual address destination() const = 0;
 
   // Clean static call (will force resolving on next use)
-  void set_to_clean();
+  void set_to_clean(bool in_use = true);
 
   // Set state. The entry must be the same, as computed by compute_entry.
   // Computation and setting is split up, since the actions are separate during

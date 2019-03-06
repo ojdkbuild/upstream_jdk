@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes.test;
 
 import org.junit.Assert;
@@ -156,11 +158,11 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
 
         PhaseContext context = new PhaseContext(getProviders());
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         graph.clearAllStateAfter();
         graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
         canonicalizer.apply(graph, context);
 
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
         // new DominatorConditionalEliminationPhase(true).apply(graph, context);
         new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
         canonicalizer.apply(graph, context);

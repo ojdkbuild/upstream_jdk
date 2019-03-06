@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.amd64;
 
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -70,7 +72,8 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
         crb.recordMark(config.MARKID_INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
         assert !callReg.equals(METHOD);
-        AMD64Call.indirectCall(crb, masm, callReg, callTarget, state);
+        int pcOffset = AMD64Call.indirectCall(crb, masm, callReg, callTarget, state);
+        crb.recordInlineInvokeCallOp(pcOffset, getPosition());
     }
 
     @Override

@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.code;
 
 import static java.util.Collections.emptyList;
@@ -33,9 +35,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import jdk.internal.vm.compiler.collections.EconomicSet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;

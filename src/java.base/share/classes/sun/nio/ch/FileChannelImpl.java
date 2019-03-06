@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.io.UncheckedIOException;
 import java.lang.ref.Cleaner.Cleanable;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
@@ -38,24 +39,15 @@ import java.nio.channels.FileLock;
 import java.nio.channels.FileLockInterruptionException;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
-import java.nio.channels.OverlappingFileLockException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.FileStore;
-import java.nio.file.FileSystemException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 import jdk.internal.misc.JavaIOFileDescriptorAccess;
 import jdk.internal.misc.JavaNioAccess;
 import jdk.internal.misc.SharedSecrets;
 import jdk.internal.ref.Cleaner;
 import jdk.internal.ref.CleanerFactory;
-import sun.security.action.GetPropertyAction;
 
 public class FileChannelImpl
     extends FileChannel
@@ -90,7 +82,7 @@ public class FileChannelImpl
     // Lock for operations involving position and size
     private final Object positionLock = new Object();
 
-    // Positional-read is not interruptible
+    // blocking operations are not interruptible
     private volatile boolean uninterruptible;
 
     // DirectIO flag
@@ -162,6 +154,14 @@ public class FileChannelImpl
         uninterruptible = true;
     }
 
+    private void beginBlocking() {
+        if (!uninterruptible) begin();
+    }
+
+    private void endBlocking(boolean completed) throws AsynchronousCloseException {
+        if (!uninterruptible) end(completed);
+    }
+
     // -- Standard channel operations --
 
     protected void implCloseChannel() throws IOException {
@@ -215,7 +215,7 @@ public class FileChannelImpl
             int n = 0;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
@@ -225,7 +225,7 @@ public class FileChannelImpl
                 return IOStatus.normalize(n);
             } finally {
                 threads.remove(ti);
-                end(n > 0);
+                endBlocking(n > 0);
                 assert IOStatus.check(n);
             }
         }
@@ -245,7 +245,7 @@ public class FileChannelImpl
             long n = 0;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
@@ -256,7 +256,7 @@ public class FileChannelImpl
                 return IOStatus.normalize(n);
             } finally {
                 threads.remove(ti);
-                end(n > 0);
+                endBlocking(n > 0);
                 assert IOStatus.check(n);
             }
         }
@@ -272,7 +272,7 @@ public class FileChannelImpl
             int n = 0;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
@@ -282,7 +282,7 @@ public class FileChannelImpl
                 return IOStatus.normalize(n);
             } finally {
                 threads.remove(ti);
-                end(n > 0);
+                endBlocking(n > 0);
                 assert IOStatus.check(n);
             }
         }
@@ -302,7 +302,7 @@ public class FileChannelImpl
             long n = 0;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
@@ -313,7 +313,7 @@ public class FileChannelImpl
                 return IOStatus.normalize(n);
             } finally {
                 threads.remove(ti);
-                end(n > 0);
+                endBlocking(n > 0);
                 assert IOStatus.check(n);
             }
         }
@@ -327,19 +327,19 @@ public class FileChannelImpl
             long p = -1;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return 0;
                 boolean append = fdAccess.getAppend(fd);
                 do {
                     // in append-mode then position is advanced to end before writing
-                    p = (append) ? nd.size(fd) : position0(fd, -1);
+                    p = (append) ? nd.size(fd) : nd.seek(fd, -1);
                 } while ((p == IOStatus.INTERRUPTED) && isOpen());
                 return IOStatus.normalize(p);
             } finally {
                 threads.remove(ti);
-                end(p > -1);
+                endBlocking(p > -1);
                 assert IOStatus.check(p);
             }
         }
@@ -353,17 +353,17 @@ public class FileChannelImpl
             long p = -1;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return null;
                 do {
-                    p = position0(fd, newPosition);
+                    p = nd.seek(fd, newPosition);
                 } while ((p == IOStatus.INTERRUPTED) && isOpen());
                 return this;
             } finally {
                 threads.remove(ti);
-                end(p > -1);
+                endBlocking(p > -1);
                 assert IOStatus.check(p);
             }
         }
@@ -375,7 +375,7 @@ public class FileChannelImpl
             long s = -1;
             int ti = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return -1;
@@ -385,7 +385,7 @@ public class FileChannelImpl
                 return IOStatus.normalize(s);
             } finally {
                 threads.remove(ti);
-                end(s > -1);
+                endBlocking(s > -1);
                 assert IOStatus.check(s);
             }
         }
@@ -403,7 +403,7 @@ public class FileChannelImpl
             int ti = -1;
             long rp = -1;
             try {
-                begin();
+                beginBlocking();
                 ti = threads.add();
                 if (!isOpen())
                     return null;
@@ -418,7 +418,7 @@ public class FileChannelImpl
 
                 // get current position
                 do {
-                    p = position0(fd, -1);
+                    p = nd.seek(fd, -1);
                 } while ((p == IOStatus.INTERRUPTED) && isOpen());
                 if (!isOpen())
                     return null;
@@ -437,12 +437,12 @@ public class FileChannelImpl
                 if (p > newSize)
                     p = newSize;
                 do {
-                    rp = position0(fd, p);
+                    rp = nd.seek(fd, p);
                 } while ((rp == IOStatus.INTERRUPTED) && isOpen());
                 return this;
             } finally {
                 threads.remove(ti);
-                end(rv > -1);
+                endBlocking(rv > -1);
                 assert IOStatus.check(rv);
             }
         }
@@ -453,7 +453,7 @@ public class FileChannelImpl
         int rv = -1;
         int ti = -1;
         try {
-            begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return;
@@ -462,7 +462,7 @@ public class FileChannelImpl
             } while ((rv == IOStatus.INTERRUPTED) && isOpen());
         } finally {
             threads.remove(ti);
-            end(rv > -1);
+            endBlocking(rv > -1);
             assert IOStatus.check(rv);
         }
     }
@@ -493,7 +493,7 @@ public class FileChannelImpl
         long n = -1;
         int ti = -1;
         try {
-            begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return -1;
@@ -808,9 +808,8 @@ public class FileChannelImpl
         int n = 0;
         int ti = -1;
 
-        boolean interruptible = !uninterruptible;
         try {
-            if (interruptible) begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return -1;
@@ -820,7 +819,7 @@ public class FileChannelImpl
             return IOStatus.normalize(n);
         } finally {
             threads.remove(ti);
-            if (interruptible) end(n > 0);
+            endBlocking(n > 0);
             assert IOStatus.check(n);
         }
     }
@@ -849,7 +848,7 @@ public class FileChannelImpl
         int n = 0;
         int ti = -1;
         try {
-            begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return -1;
@@ -859,7 +858,7 @@ public class FileChannelImpl
             return IOStatus.normalize(n);
         } finally {
             threads.remove(ti);
-            end(n > 0);
+            endBlocking(n > 0);
             assert IOStatus.check(n);
         }
     }
@@ -963,7 +962,7 @@ public class FileChannelImpl
         long addr = -1;
         int ti = -1;
         try {
-            begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return null;
@@ -985,7 +984,7 @@ public class FileChannelImpl
                     }
                     int rv;
                     do {
-                        rv = nd.allocate(fd, position + size);
+                        rv = nd.truncate(fd, position + size);
                     } while ((rv == IOStatus.INTERRUPTED) && isOpen());
                     if (!isOpen())
                         return null;
@@ -1052,7 +1051,7 @@ public class FileChannelImpl
             }
         } finally {
             threads.remove(ti);
-            end(IOStatus.checkAll(addr));
+            endBlocking(IOStatus.checkAll(addr));
         }
     }
 
@@ -1083,49 +1082,19 @@ public class FileChannelImpl
 
     // -- Locks --
 
-
-
     // keeps track of locks on this file
     private volatile FileLockTable fileLockTable;
-
-    // indicates if file locks are maintained system-wide (as per spec)
-    private static boolean isSharedFileLockTable;
-
-    // indicates if the disableSystemWideOverlappingFileLockCheck property
-    // has been checked
-    private static volatile boolean propertyChecked;
-
-    // The lock list in J2SE 1.4/5.0 was local to each FileChannel instance so
-    // the overlap check wasn't system wide when there were multiple channels to
-    // the same file. This property is used to get 1.4/5.0 behavior if desired.
-    private static boolean isSharedFileLockTable() {
-        if (!propertyChecked) {
-            synchronized (FileChannelImpl.class) {
-                if (!propertyChecked) {
-                    String value = GetPropertyAction.privilegedGetProperty(
-                            "sun.nio.ch.disableSystemWideOverlappingFileLockCheck");
-                    isSharedFileLockTable = ((value == null) || value.equals("false"));
-                    propertyChecked = true;
-                }
-            }
-        }
-        return isSharedFileLockTable;
-    }
 
     private FileLockTable fileLockTable() throws IOException {
         if (fileLockTable == null) {
             synchronized (this) {
                 if (fileLockTable == null) {
-                    if (isSharedFileLockTable()) {
-                        int ti = threads.add();
-                        try {
-                            ensureOpen();
-                            fileLockTable = FileLockTable.newSharedFileLockTable(this, fd);
-                        } finally {
-                            threads.remove(ti);
-                        }
-                    } else {
-                        fileLockTable = new SimpleFileLockTable();
+                    int ti = threads.add();
+                    try {
+                        ensureOpen();
+                        fileLockTable = new FileLockTable(this, fd);
+                    } finally {
+                        threads.remove(ti);
                     }
                 }
             }
@@ -1147,7 +1116,7 @@ public class FileChannelImpl
         boolean completed = false;
         int ti = -1;
         try {
-            begin();
+            beginBlocking();
             ti = threads.add();
             if (!isOpen())
                 return null;
@@ -1170,7 +1139,7 @@ public class FileChannelImpl
                 flt.remove(fli);
             threads.remove(ti);
             try {
-                end(completed);
+                endBlocking(completed);
             } catch (ClosedByInterruptException e) {
                 throw new FileLockInterruptionException();
             }
@@ -1229,59 +1198,6 @@ public class FileChannelImpl
         fileLockTable.remove(fli);
     }
 
-    // -- File lock support --
-
-    /**
-     * A simple file lock table that maintains a list of FileLocks obtained by a
-     * FileChannel. Use to get 1.4/5.0 behaviour.
-     */
-    private static class SimpleFileLockTable extends FileLockTable {
-        // synchronize on list for access
-        private final List<FileLock> lockList = new ArrayList<FileLock>(2);
-
-        public SimpleFileLockTable() {
-        }
-
-        private void checkList(long position, long size)
-            throws OverlappingFileLockException
-        {
-            assert Thread.holdsLock(lockList);
-            for (FileLock fl: lockList) {
-                if (fl.overlaps(position, size)) {
-                    throw new OverlappingFileLockException();
-                }
-            }
-        }
-
-        public void add(FileLock fl) throws OverlappingFileLockException {
-            synchronized (lockList) {
-                checkList(fl.position(), fl.size());
-                lockList.add(fl);
-            }
-        }
-
-        public void remove(FileLock fl) {
-            synchronized (lockList) {
-                lockList.remove(fl);
-            }
-        }
-
-        public List<FileLock> removeAll() {
-            synchronized(lockList) {
-                List<FileLock> result = new ArrayList<FileLock>(lockList);
-                lockList.clear();
-                return result;
-            }
-        }
-
-        public void replace(FileLock fl1, FileLock fl2) {
-            synchronized (lockList) {
-                lockList.remove(fl1);
-                lockList.add(fl2);
-            }
-        }
-    }
-
     // -- Native methods --
 
     // Creates a new mapping
@@ -1294,11 +1210,6 @@ public class FileChannelImpl
     // Transfers from src to dst, or returns -2 if kernel can't do that
     private native long transferTo0(FileDescriptor src, long position,
                                     long count, FileDescriptor dst);
-
-    // Sets or reports this file's position
-    // If offset is -1, the current position is returned
-    // otherwise the position is set to offset
-    private native long position0(FileDescriptor fd, long offset);
 
     // Caches fieldIDs
     private static native long initIDs();

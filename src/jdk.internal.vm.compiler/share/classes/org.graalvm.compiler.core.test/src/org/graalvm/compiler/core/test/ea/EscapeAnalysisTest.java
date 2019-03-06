@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.core.test.ea;
 
 import java.util.List;
@@ -39,6 +41,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -405,6 +408,8 @@ public class EscapeAnalysisTest extends EATestBase {
      */
     @Test
     public void testNewNode() {
+        // Trackking of creation interferes with escape analysis
+        Assume.assumeFalse(Node.TRACK_CREATION_POSITION);
         testEscapeAnalysis("testNewNodeSnippet", null, false);
     }
 

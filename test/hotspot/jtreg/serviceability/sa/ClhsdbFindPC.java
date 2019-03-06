@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,11 @@ import java.util.ArrayList;
 
 import jdk.test.lib.apps.LingeredApp;
 
-/*
+/**
  * @test
  * @bug 8193124
  * @summary Test the clhsdb 'findpc' command
+ * @requires vm.hasSA
  * @library /test/lib
  * @run main/othervm ClhsdbFindPC
  */
@@ -85,8 +86,7 @@ public class ClhsdbFindPC {
                             "frame size:"));
                 } else {
                     expStrMap.put(cmdStr, List.of(
-                            "In interpreter codelet",
-                            "invoke return entry points"));
+                            "In interpreter codelet"));
                 }
 
                 test.run(theApp.getPid(), cmds, expStrMap, null);

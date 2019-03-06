@@ -28,7 +28,7 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main ReadFromNoaccessArea
  */
@@ -53,7 +53,7 @@ public class ReadFromNoaccessArea {
           "-XX:+UseCompressedOops",
           "-XX:HeapBaseMinAddress=33G",
           "-XX:-CreateCoredumpOnCrash",
-          "-Xmx32m",
+          "-Xmx128m",
           DummyClassWithMainTryingToReadFromNoaccessArea.class.getName());
 
     OutputAnalyzer output = new OutputAnalyzer(pb.start());

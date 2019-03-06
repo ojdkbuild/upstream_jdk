@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.nodes.extended;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
@@ -228,7 +230,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
     @Override
     public AbstractBeginNode getPrimarySuccessor() {
-        return this.defaultSuccessor();
+        return null;
     }
 
     /**

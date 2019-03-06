@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,9 @@
                                                                             \
   experimental(bool, BootstrapJVMCI, false,                                 \
           "Bootstrap JVMCI before running Java main method")                \
+                                                                            \
+  experimental(bool, EagerJVMCI, false,                                     \
+          "Force eager JVMCI initialization")                               \
                                                                             \
   experimental(bool, PrintBootstrap, true,                                  \
           "Print JVMCI bootstrap progress and summary")                     \
@@ -118,5 +121,8 @@ class JVMCIGlobals {
   // an error message describing the inconsistency is printed before
   // returning false.
   static bool check_jvmci_flags_are_consistent();
+
+  // Check and exit VM with error if selected GC is not supported by JVMCI.
+  static void check_jvmci_supported_gc();
 };
 #endif // SHARE_VM_JVMCI_JVMCIGLOBALS_HPP

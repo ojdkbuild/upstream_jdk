@@ -29,7 +29,7 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main AssertSafepointCheckConsistency1
  */
@@ -52,7 +52,7 @@ public class AssertSafepointCheckConsistency1 {
                   "-XX:+WhiteBoxAPI",
                   "-XX:-TransmitErrorReport",
                   "-XX:-CreateCoredumpOnCrash",
-                  "-Xmx32m",
+                  "-Xmx128m",
                   "AssertSafepointCheckConsistency1",
                   "test");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());

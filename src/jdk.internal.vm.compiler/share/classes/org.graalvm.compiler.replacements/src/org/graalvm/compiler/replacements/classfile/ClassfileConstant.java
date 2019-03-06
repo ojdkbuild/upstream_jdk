@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.replacements.classfile;
 
 import static org.graalvm.compiler.bytecode.Bytecodes.GETFIELD;
@@ -54,6 +56,7 @@ abstract class ClassfileConstant {
     public static final byte CONSTANT_NameAndType        = 12;
     public static final byte CONSTANT_MethodHandle       = 15;
     public static final byte CONSTANT_MethodType         = 16;
+    public static final byte CONSTANT_Dynamic            = 17;
     public static final byte CONSTANT_InvokeDynamic      = 18;
     // @formatter:on
 

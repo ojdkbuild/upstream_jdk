@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 #include "logging/logLevel.hpp"
 #include "logging/logTag.hpp"
 #include "memory/allocation.hpp"
+#include "runtime/flags/jvmFlag.hpp"
 #include "runtime/java.hpp"
 #include "runtime/os.hpp"
 #include "runtime/perfData.hpp"
@@ -142,6 +143,7 @@ public:
   void*           _os_lib;
   bool            _is_absolute_path;
   bool            _is_static_lib;
+  bool            _is_instrument_lib;
   AgentState      _state;
   AgentLibrary*   _next;
 
@@ -154,17 +156,19 @@ public:
   void set_os_lib(void* os_lib)             { _os_lib = os_lib; }
   AgentLibrary* next() const                { return _next; }
   bool is_static_lib() const                { return _is_static_lib; }
+  bool is_instrument_lib() const            { return _is_instrument_lib; }
   void set_static_lib(bool is_static_lib)   { _is_static_lib = is_static_lib; }
   bool valid()                              { return (_state == agent_valid); }
   void set_valid()                          { _state = agent_valid; }
   void set_invalid()                        { _state = agent_invalid; }
 
   // Constructor
-  AgentLibrary(const char* name, const char* options, bool is_absolute_path, void* os_lib);
+  AgentLibrary(const char* name, const char* options, bool is_absolute_path,
+               void* os_lib, bool instrument_lib=false);
 };
 
 // maintain an order of entry list of AgentLibrary
-class AgentLibraryList VALUE_OBJ_CLASS_SPEC {
+class AgentLibraryList {
  private:
   AgentLibrary*   _first;
   AgentLibrary*   _last;
@@ -287,6 +291,7 @@ class Arguments : AllStatic {
   static SystemProperty *_java_home;
   static SystemProperty *_java_class_path;
   static SystemProperty *_jdk_boot_class_path_append;
+  static SystemProperty *_vm_info;
 
   // --patch-module=module=<file>(<pathsep><file>)*
   // Each element contains the associated module name, path
@@ -328,7 +333,7 @@ class Arguments : AllStatic {
   // Value of the conservative maximum heap alignment needed
   static size_t  _conservative_max_heap_alignment;
 
-  static uintx  _min_heap_size;
+  static size_t  _min_heap_size;
 
   // -Xrun arguments
   static AgentLibraryList _libraryList;
@@ -337,6 +342,7 @@ class Arguments : AllStatic {
   // -agentlib and -agentpath arguments
   static AgentLibraryList _agentList;
   static void add_init_agent(const char* name, char* options, bool absolute_path);
+  static void add_instrument_agent(const char* name, char* options, bool absolute_path);
 
   // Late-binding agents not started via arguments
   static void add_loaded_agent(AgentLibrary *agentLib);
@@ -354,6 +360,9 @@ class Arguments : AllStatic {
   static void set_xdebug_mode(bool arg) { _xdebug_mode = arg; }
   static bool xdebug_mode()             { return _xdebug_mode; }
 
+  // preview features
+  static bool _enable_preview;
+
   // Used to save default settings
   static bool _AlwaysCompileLoopMethods;
   static bool _UseOnStackReplacement;
@@ -363,19 +372,6 @@ class Arguments : AllStatic {
   static intx _Tier3InvokeNotifyFreqLog;
   static intx _Tier4InvocationThreshold;
 
-  // Compilation mode.
-  static bool compilation_mode_selected();
-  static void select_compilation_mode_ergonomically();
-
-  // Tiered
-  static void set_tiered_flags();
-  // CMS/ParNew garbage collectors
-  static void set_parnew_gc_flags();
-  static void set_cms_and_parnew_gc_flags();
-  // UseParallel[Old]GC
-  static void set_parallel_gc_flags();
-  // Garbage-First (UseG1GC)
-  static void set_g1_gc_flags();
   // GC ergonomics
   static void set_conservative_max_heap_alignment();
   static void set_use_compressed_oops();
@@ -412,8 +408,8 @@ class Arguments : AllStatic {
 
   // Argument parsing
   static void do_pd_flag_adjustments();
-  static bool parse_argument(const char* arg, Flag::Flags origin);
-  static bool process_argument(const char* arg, jboolean ignore_unrecognized, Flag::Flags origin);
+  static bool parse_argument(const char* arg, JVMFlag::Flags origin);
+  static bool process_argument(const char* arg, jboolean ignore_unrecognized, JVMFlag::Flags origin);
   static void process_java_launcher_argument(const char*, void*);
   static void process_java_compiler_argument(const char* arg);
   static jint parse_options_environment_variable(const char* name, ScopedVMInitArgs* vm_args);
@@ -441,7 +437,7 @@ class Arguments : AllStatic {
   static jint parse_vm_init_args(const JavaVMInitArgs *java_tool_options_args,
                                  const JavaVMInitArgs *java_options_args,
                                  const JavaVMInitArgs *cmd_line_args);
-  static jint parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_mod_javabase, Flag::Flags origin);
+  static jint parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_mod_javabase, JVMFlag::Flags origin);
   static jint finalize_vm_init_args(bool patch_mod_javabase);
   static bool is_bad_option(const JavaVMOption* option, jboolean ignore, const char* option_type);
 
@@ -465,18 +461,6 @@ class Arguments : AllStatic {
   static void build_jvm_flags(const char* arg);
   static void add_string(char*** bldarray, int* count, const char* arg);
   static const char* build_resource_string(char** args, int count);
-
-  static bool methodExists(
-    char* className, char* methodName,
-    int classesNum, char** classes, bool* allMethods,
-    int methodsNum, char** methods, bool* allClasses
-  );
-
-  static void parseOnlyLine(
-    const char* line,
-    short* classesNum, short* classesMax, char*** classes, bool** allMethods,
-    short* methodsNum, short* methodsMax, char*** methods, bool** allClasses
-  );
 
   // Returns true if the flag is obsolete (and not yet expired).
   // In this case the 'version' buffer is filled in with
@@ -502,38 +486,10 @@ class Arguments : AllStatic {
   static const char* handle_aliases_and_deprecation(const char* arg, bool warn);
   static bool lookup_logging_aliases(const char* arg, char* buffer);
   static AliasedLoggingFlag catch_logging_aliases(const char* name, bool on);
-  static short  CompileOnlyClassesNum;
-  static short  CompileOnlyClassesMax;
-  static char** CompileOnlyClasses;
-  static bool*  CompileOnlyAllMethods;
-
-  static short  CompileOnlyMethodsNum;
-  static short  CompileOnlyMethodsMax;
-  static char** CompileOnlyMethods;
-  static bool*  CompileOnlyAllClasses;
-
-  static short  InterpretOnlyClassesNum;
-  static short  InterpretOnlyClassesMax;
-  static char** InterpretOnlyClasses;
-  static bool*  InterpretOnlyAllMethods;
-
-  static bool   CheckCompileOnly;
 
   static char*  SharedArchivePath;
 
  public:
-  // Scale compile thresholds
-  // Returns threshold scaled with CompileThresholdScaling
-  static intx scaled_compile_threshold(intx threshold, double scale);
-  static intx scaled_compile_threshold(intx threshold) {
-    return scaled_compile_threshold(threshold, CompileThresholdScaling);
-  }
-  // Returns freq_log scaled with CompileThresholdScaling
-  static intx scaled_freq_log(intx freq_log, double scale);
-  static intx scaled_freq_log(intx freq_log) {
-    return scaled_freq_log(freq_log, CompileThresholdScaling);
-  }
-
   // Parses the arguments, first phase
   static jint parse(const JavaVMInitArgs* args);
   // Apply ergonomics
@@ -541,12 +497,6 @@ class Arguments : AllStatic {
   // Adjusts the arguments after the OS have adjusted the arguments
   static jint adjust_after_os();
 
-  static void set_gc_specific_flags();
-#if INCLUDE_JVMCI
-  // Check consistency of jvmci vm argument settings.
-  static bool check_jvmci_args_consistency();
-  static void set_jvmci_specific_flags();
-#endif
   // Check for consistency in the selection of the garbage collector.
   static bool check_gc_consistency();        // Check user-selected gc
   // Check consistency or otherwise of VM argument settings
@@ -620,18 +570,7 @@ class Arguments : AllStatic {
   static exit_hook_t     exit_hook()        { return _exit_hook; }
   static vfprintf_hook_t vfprintf_hook()    { return _vfprintf_hook; }
 
-  static bool GetCheckCompileOnly ()        { return CheckCompileOnly; }
-
   static const char* GetSharedArchivePath() { return SharedArchivePath; }
-
-  static bool CompileMethod(char* className, char* methodName) {
-    return
-      methodExists(
-        className, methodName,
-        CompileOnlyClassesNum, CompileOnlyClasses, CompileOnlyAllMethods,
-        CompileOnlyMethodsNum, CompileOnlyMethods, CompileOnlyAllClasses
-      );
-  }
 
   // Java launcher properties
   static void process_sun_java_launcher_properties(JavaVMInitArgs* args);
@@ -641,6 +580,11 @@ class Arguments : AllStatic {
 
   // Update/Initialize System properties after JDK version number is known
   static void init_version_specific_system_properties();
+
+  // Update VM info property - called after argument parsing
+  static void update_vm_info_property(const char* vm_info) {
+    _vm_info->set_value(vm_info);
+  }
 
   // Property List manipulation
   static void PropertyList_add(SystemProperty *element);
@@ -694,11 +638,16 @@ class Arguments : AllStatic {
   static Mode mode()                        { return _mode; }
   static bool is_interpreter_only() { return mode() == _int; }
 
+  // preview features
+  static void set_enable_preview() { _enable_preview = true; }
+  static bool enable_preview() { return _enable_preview; }
 
   // Utility: copies src into buf, replacing "%%" with "%" and "%p" with pid.
   static bool copy_expand_pid(const char* src, size_t srclen, char* buf, size_t buflen);
 
   static void check_unsupported_dumping_properties() NOT_CDS_RETURN;
+
+  static bool check_unsupported_cds_runtime_properties() NOT_CDS_RETURN0;
 
   static bool atojulong(const char *s, julong* result);
 };

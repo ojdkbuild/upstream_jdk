@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,13 @@
  */
 
 import java.util.Date;
+import java.util.Locale;
 import jdk.testlibrary.OutputAnalyzer;
 import jdk.test.lib.util.JarUtils;
 
 /**
  * @test
- * @bug 8024302 8026037
+ * @bug 8024302 8026037 8196213
  * @summary Checks warnings if -tsa and -tsacert options are not specified
  * @library /lib/testlibrary /test/lib ../
  * @build jdk.test.lib.util.JarUtils
@@ -40,8 +41,16 @@ public class NoTimestampTest extends Test {
      * and checks that proper warnings are shown.
      */
     public static void main(String[] args) throws Throwable {
-        NoTimestampTest test = new NoTimestampTest();
-        test.start();
+        Locale reservedLocale = Locale.getDefault();
+        Locale.setDefault(Locale.US);
+
+        try {
+            NoTimestampTest test = new NoTimestampTest();
+            test.start();
+        } finally {
+            // Restore the reserved locale
+            Locale.setDefault(reservedLocale);
+        }
     }
 
     private void start() throws Throwable {
@@ -57,15 +66,9 @@ public class NoTimestampTest extends Test {
                 * 24 * 60 * 60 * 1000L);
 
         // create key pair
-        keytool(
-                "-genkey",
-                "-alias", KEY_ALIAS,
-                "-keyalg", KEY_ALG,
-                "-keysize", Integer.toString(KEY_SIZE),
-                "-keystore", KEYSTORE,
-                "-storepass", PASSWORD,
-                "-keypass", PASSWORD,
-                "-dname", "CN=Test",
+        createAlias(CA_KEY_ALIAS);
+        createAlias(KEY_ALIAS);
+        issueCert(KEY_ALIAS,
                 "-validity", Integer.toString(VALIDITY));
 
         // sign jar file

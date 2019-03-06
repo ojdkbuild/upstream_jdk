@@ -25,11 +25,12 @@
  * @test TestWBGC
  * @bug 8055098
  * @summary Test verify that WB methods isObjectInOldGen and youngGC works correctly.
+ * @requires vm.gc != "Z"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @build sun.hotspot.WhiteBox
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  * @run driver TestWBGC
  */
 import jdk.test.lib.Asserts;

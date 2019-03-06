@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -259,7 +260,7 @@ public class ModuleDotGraph {
         static final Set<String> JDK_SUBGRAPH = jdk();
 
         private static Set<String> javaSE() {
-            String root = "java.se.ee";
+            String root = "java.se";
             ModuleFinder system = ModuleFinder.ofSystem();
             if (system.find(root).isPresent()) {
                 return Stream.concat(Stream.of(root),
@@ -329,7 +330,7 @@ public class ModuleDotGraph {
 
                 out.format("digraph \"%s\" {%n", name);
                 out.format("  nodesep=.5;%n");
-                out.format("  ranksep=%f;%n", attributes.rankSep());
+                out.format((Locale)null, "  ranksep=%f;%n", attributes.rankSep());
                 out.format("  pencolor=transparent;%n");
                 out.format("  node [shape=plaintext, fontcolor=\"%s\", fontname=\"%s\","
                                 + " fontsize=%d, margin=\".2,.2\"];%n",

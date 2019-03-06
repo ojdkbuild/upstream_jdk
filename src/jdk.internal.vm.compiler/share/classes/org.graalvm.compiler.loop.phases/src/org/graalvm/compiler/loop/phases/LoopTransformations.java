@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.loop.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
@@ -31,7 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.RetryableBailoutException;
-import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -116,12 +118,14 @@ public abstract class LoopTransformations {
         Position firstPosition = successors.next();
         AbstractBeginNode originalLoopBegin = BeginNode.begin(originalLoop.entryPoint());
         firstPosition.set(newControlSplit, originalLoopBegin);
+        originalLoopBegin.setNodeSourcePosition(firstPosition.get(firstNode).getNodeSourcePosition());
 
         while (successors.hasNext()) {
             Position position = successors.next();
             // create a new loop duplicate and connect it.
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
             AbstractBeginNode newBegin = BeginNode.begin(duplicateLoop.entryPoint());
+            newBegin.setNodeSourcePosition(position.get(firstNode).getNodeSourcePosition());
             position.set(newControlSplit, newBegin);
 
             // For each cloned ControlSplitNode, simplify the proper path
@@ -451,7 +455,7 @@ public abstract class LoopTransformations {
         if (!(condition instanceof CompareNode)) {
             return false;
         }
-        if (((CompareNode) condition).condition() == Condition.EQ || ((CompareNode) condition).condition() == Condition.NE) {
+        if (((CompareNode) condition).condition() == CanonicalCondition.EQ) {
             condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s condition unsupported %s ", loopBegin, ((CompareNode) condition).condition());
             return false;
         }

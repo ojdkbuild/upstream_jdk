@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,6 +126,7 @@ public class Gen extends JCTree.Visitor {
         genCrt = options.isSet(XJCOV);
         debugCode = options.isSet("debug.code");
         allowBetterNullChecks = target.hasObjects();
+        disableVirtualizedPrivateInvoke = options.isSet("disableVirtualizedPrivateInvoke");
         pool = new Pool(types);
 
         // ignore cldc because we cannot have both stackmap formats
@@ -140,6 +141,7 @@ public class Gen extends JCTree.Visitor {
     private final boolean genCrt;
     private final boolean debugCode;
     private final boolean allowBetterNullChecks;
+    private boolean disableVirtualizedPrivateInvoke;
 
     /** Code buffer, set by genMethod.
      */
@@ -1342,6 +1344,16 @@ public class Gen extends JCTree.Visitor {
             boolean hasFinalizer() {
                 return tree.finalizer != null;
             }
+
+            @Override
+            void afterBody() {
+                if (tree.finalizer != null && (tree.finalizer.flags & BODY_ONLY_FINALIZE) != 0) {
+                    //for body-only finally, remove the GenFinalizer after try body
+                    //so that the finally is not generated to catch bodies:
+                    tryEnv.info.finalize = null;
+                }
+            }
+
         };
         tryEnv.info.gaps = new ListBuffer<>();
         genTry(tree.body, tree.catchers, tryEnv);
@@ -1358,15 +1370,16 @@ public class Gen extends JCTree.Visitor {
             Code.State stateTry = code.state.dup();
             genStat(body, env, CRT_BLOCK);
             int endpc = code.curCP();
-            boolean hasFinalizer =
-                env.info.finalize != null &&
-                env.info.finalize.hasFinalizer();
             List<Integer> gaps = env.info.gaps.toList();
             code.statBegin(TreeInfo.endPos(body));
             genFinalizer(env);
             code.statBegin(TreeInfo.endPos(env.tree));
             Chain exitChain = code.branch(goto_);
             endFinalizerGap(env);
+            env.info.finalize.afterBody();
+            boolean hasFinalizer =
+                env.info.finalize != null &&
+                env.info.finalize.hasFinalizer();
             if (startpc != endpc) for (List<JCCatch> l = catchers; l.nonEmpty(); l = l.tail) {
                 // start off with exception on stack
                 code.entryPoint(stateTry, l.head.param.sym.type);
@@ -2053,8 +2066,15 @@ public class Gen extends JCTree.Visitor {
         } else {
             items.makeThisItem().load();
             sym = binaryQualifier(sym, env.enclClass.type);
-            result = items.makeMemberItem(sym, (sym.flags() & PRIVATE) != 0);
+            result = items.makeMemberItem(sym, nonVirtualForPrivateAccess(sym));
         }
+    }
+
+    //where
+    private boolean nonVirtualForPrivateAccess(Symbol sym) {
+        boolean useVirtual = target.hasVirtualPrivateInvoke() &&
+                             !disableVirtualizedPrivateInvoke;
+        return !useVirtual && ((sym.flags() & PRIVATE) != 0);
     }
 
     public void visitSelect(JCFieldAccess tree) {
@@ -2113,7 +2133,7 @@ public class Gen extends JCTree.Visitor {
                 } else {
                     result = items.
                         makeMemberItem(sym,
-                                       (sym.flags() & PRIVATE) != 0 ||
+                                       nonVirtualForPrivateAccess(sym) ||
                                        selectSuper || accessSuper);
                 }
             }
@@ -2219,6 +2239,9 @@ public class Gen extends JCTree.Visitor {
 
         /** Does this finalizer have some nontrivial cleanup to perform? */
         boolean hasFinalizer() { return true; }
+
+        /** Should be invoked after the try's body has been visited. */
+        void afterBody() {}
     }
 
     /** code generation contexts,

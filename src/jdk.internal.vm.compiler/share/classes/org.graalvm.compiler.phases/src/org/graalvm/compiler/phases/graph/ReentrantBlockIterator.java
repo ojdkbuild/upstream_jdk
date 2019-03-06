@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.phases.graph;
 
 import java.util.ArrayDeque;
@@ -28,6 +30,8 @@ import java.util.Deque;
 import java.util.List;
 import java.util.function.Predicate;
 
+import jdk.internal.vm.compiler.collections.EconomicMap;
+import jdk.internal.vm.compiler.collections.Equivalence;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -38,8 +42,6 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.util.Equivalence;
-import org.graalvm.util.EconomicMap;
 
 public final class ReentrantBlockIterator {
 

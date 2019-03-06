@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@ class EncodePKlassNode;
 class FastLockNode;
 class FastUnlockNode;
 class IfNode;
+class IfProjNode;
 class IfFalseNode;
 class IfTrueNode;
 class InitializeNode;
@@ -80,6 +81,9 @@ class JVMState;
 class JumpNode;
 class JumpProjNode;
 class LoadNode;
+class LoadBarrierNode;
+class LoadBarrierSlowRegNode;
+class LoadBarrierWeakSlowRegNode;
 class LoadStoreNode;
 class LockNode;
 class LoopNode;
@@ -94,6 +98,7 @@ class MachConstantBaseNode;
 class MachConstantNode;
 class MachGotoNode;
 class MachIfNode;
+class MachJumpNode;
 class MachNode;
 class MachNullCheckNode;
 class MachProjNode;
@@ -633,6 +638,7 @@ public:
       DEFINE_CLASS_ID(MemBar,      Multi, 3)
         DEFINE_CLASS_ID(Initialize,       MemBar, 0)
         DEFINE_CLASS_ID(MemBarStoreStore, MemBar, 1)
+      DEFINE_CLASS_ID(LoadBarrier, Multi, 4)
 
     DEFINE_CLASS_ID(Mach,  Node, 1)
       DEFINE_CLASS_ID(MachReturn, Mach, 0)
@@ -651,6 +657,7 @@ public:
       DEFINE_CLASS_ID(MachTemp,         Mach, 3)
       DEFINE_CLASS_ID(MachConstantBase, Mach, 4)
       DEFINE_CLASS_ID(MachConstant,     Mach, 5)
+        DEFINE_CLASS_ID(MachJump,       MachConstant, 0)
       DEFINE_CLASS_ID(MachMerge,        Mach, 6)
 
     DEFINE_CLASS_ID(Type,  Node, 2)
@@ -670,14 +677,17 @@ public:
     DEFINE_CLASS_ID(Proj,  Node, 3)
       DEFINE_CLASS_ID(CatchProj, Proj, 0)
       DEFINE_CLASS_ID(JumpProj,  Proj, 1)
-      DEFINE_CLASS_ID(IfTrue,    Proj, 2)
-      DEFINE_CLASS_ID(IfFalse,   Proj, 3)
+      DEFINE_CLASS_ID(IfProj,    Proj, 2)
+        DEFINE_CLASS_ID(IfTrue,    IfProj, 0)
+        DEFINE_CLASS_ID(IfFalse,   IfProj, 1)
       DEFINE_CLASS_ID(Parm,      Proj, 4)
       DEFINE_CLASS_ID(MachProj,  Proj, 5)
 
     DEFINE_CLASS_ID(Mem,   Node, 4)
       DEFINE_CLASS_ID(Load,  Mem, 0)
         DEFINE_CLASS_ID(LoadVector,  Load, 0)
+          DEFINE_CLASS_ID(LoadBarrierSlowReg, Load, 1)
+          DEFINE_CLASS_ID(LoadBarrierWeakSlowReg, Load, 2)
       DEFINE_CLASS_ID(Store, Mem, 1)
         DEFINE_CLASS_ID(StoreVector, Store, 0)
       DEFINE_CLASS_ID(LoadStore, Mem, 2)
@@ -810,6 +820,7 @@ public:
   DEFINE_CLASS_QUERY(FastUnlock)
   DEFINE_CLASS_QUERY(If)
   DEFINE_CLASS_QUERY(RangeCheck)
+  DEFINE_CLASS_QUERY(IfProj)
   DEFINE_CLASS_QUERY(IfFalse)
   DEFINE_CLASS_QUERY(IfTrue)
   DEFINE_CLASS_QUERY(Initialize)
@@ -817,6 +828,9 @@ public:
   DEFINE_CLASS_QUERY(JumpProj)
   DEFINE_CLASS_QUERY(Load)
   DEFINE_CLASS_QUERY(LoadStore)
+  DEFINE_CLASS_QUERY(LoadBarrier)
+  DEFINE_CLASS_QUERY(LoadBarrierSlowReg)
+  DEFINE_CLASS_QUERY(LoadBarrierWeakSlowReg)
   DEFINE_CLASS_QUERY(Lock)
   DEFINE_CLASS_QUERY(Loop)
   DEFINE_CLASS_QUERY(Mach)
@@ -831,6 +845,7 @@ public:
   DEFINE_CLASS_QUERY(MachConstant)
   DEFINE_CLASS_QUERY(MachGoto)
   DEFINE_CLASS_QUERY(MachIf)
+  DEFINE_CLASS_QUERY(MachJump)
   DEFINE_CLASS_QUERY(MachNullCheck)
   DEFINE_CLASS_QUERY(MachProj)
   DEFINE_CLASS_QUERY(MachReturn)
@@ -1194,7 +1209,7 @@ inline bool NotANode(const Node* n) {
 #if OPTO_DU_ITERATOR_ASSERT
 
 // Common code for assertion checking on DU iterators.
-class DUIterator_Common VALUE_OBJ_CLASS_SPEC {
+class DUIterator_Common {
 #ifdef ASSERT
  protected:
   bool         _vdui;               // cached value of VerifyDUIterators
@@ -1618,7 +1633,7 @@ public:
 //-----------------------------Node_Notes--------------------------------------
 // Debugging or profiling annotations loosely and sparsely associated
 // with some nodes.  See Compile::node_notes_at for the accessor.
-class Node_Notes VALUE_OBJ_CLASS_SPEC {
+class Node_Notes {
   friend class VMStructs;
   JVMState* _jvms;
 

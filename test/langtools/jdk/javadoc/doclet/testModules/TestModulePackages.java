@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8178070
+ * @bug 8178070 8196201
  * @summary Test packages table in module summary pages
  * @library /tools/lib ../lib
  * @modules jdk.compiler/com.sun.tools.javac.api
@@ -70,7 +70,7 @@ public class TestModulePackages extends JavadocTester {
                 "--module", "m");
 
         checkExit(Exit.OK);
-        checkOutput("m-summary.html", false,
+        checkOutput("m/module-summary.html", false,
                 "<h3>Packages</h3>\n"
                 + "<table class=\"packagesSummary\" summary=\"Packages table, "
                 + "listing packages, and an explanation\">");
@@ -159,7 +159,7 @@ public class TestModulePackages extends JavadocTester {
         checkTableHead("m", ColKind.EXPORTED_TO);
         checkPackageRow("m", "p", "i0", "All Modules", null, "&nbsp;");
         checkPackageRow("m", "q", "i1",
-                "<a href=\"other-summary.html\">other</a>", null, "&nbsp;");
+                "<a href=\"../other/module-summary.html\">other</a>", null, "&nbsp;");
     }
 
     @Test
@@ -247,11 +247,11 @@ public class TestModulePackages extends JavadocTester {
         checkPackageRow("m", "c", "i0", "None", "None", "&nbsp;");
         checkPackageRow("m", "e.all", "i1", "All Modules", "None", "&nbsp;");
         checkPackageRow("m", "e.other", "i2",
-                "<a href=\"other-summary.html\">other</a>", "None", "&nbsp;");
+                "<a href=\"../other/module-summary.html\">other</a>", "None", "&nbsp;");
         checkPackageRow("m", "eo", "i3", "All Modules", "All Modules", "&nbsp;");
         checkPackageRow("m", "o.all", "i4", "None", "All Modules", "&nbsp;");
         checkPackageRow("m", "o.other", "i5", "None",
-                "<a href=\"other-summary.html\">other</a>", "&nbsp;");
+                "<a href=\"../other/module-summary.html\">other</a>", "&nbsp;");
     }
 
     @Test
@@ -367,7 +367,7 @@ public class TestModulePackages extends JavadocTester {
         checkTableHead("m", ColKind.OPENED_TO);
         checkPackageRow("m", "p", "i0", null, "All Modules", "&nbsp;");
         checkPackageRow("m", "q", "i1", null,
-                "<a href=\"other-summary.html\">other</a>", "&nbsp;");
+                "<a href=\"../other/module-summary.html\">other</a>", "&nbsp;");
     }
 
     @Test
@@ -419,17 +419,17 @@ public class TestModulePackages extends JavadocTester {
                         + "<span class=\"tabEnd\">&nbsp;</span></span>");
             if (kindSet.contains(TabKind.EXPORTS)) {
                 sb.append("<span id=\"t1\" class=\"tableTab\">"
-                        + "<span><a href=\"javascript:showPkgs(1);\">Exports</a></span>"
+                        + "<span><a href=\"javascript:show(1);\">Exports</a></span>"
                         + "<span class=\"tabEnd\">&nbsp;</span></span>");
             }
             if (kindSet.contains(TabKind.OPENS)) {
                 sb.append("<span id=\"t2\" class=\"tableTab\">"
-                        + "<span><a href=\"javascript:showPkgs(2);\">Opens</a></span>"
+                        + "<span><a href=\"javascript:show(2);\">Opens</a></span>"
                         + "<span class=\"tabEnd\">&nbsp;</span></span>");
             }
             if (kindSet.contains(TabKind.CONCEALED)) {
                 sb.append("<span id=\"t3\" class=\"tableTab\"><span>"
-                        + "<a href=\"javascript:showPkgs(4);\">Concealed</a></span>"
+                        + "<a href=\"javascript:show(4);\">Concealed</a></span>"
                         + "<span class=\"tabEnd\">&nbsp;</span></span>");
             }
             sb.append("</caption>");
@@ -443,7 +443,7 @@ public class TestModulePackages extends JavadocTester {
                         + "</caption>";
         }
 
-        checkOutput(moduleName + "-summary.html", true, expect);
+        checkOutput(moduleName + "/module-summary.html", true, expect);
     }
 
 
@@ -461,7 +461,7 @@ public class TestModulePackages extends JavadocTester {
         sb.append("<th class=\"colLast\" scope=\"col\">Description</th>\n"
             + "</tr>");
 
-        checkOutput(moduleName + "-summary.html", true, sb.toString());
+        checkOutput(moduleName + "/module-summary.html", true, sb.toString());
     }
 
     private void checkPackageRow(String moduleName, String packageName,
@@ -481,7 +481,7 @@ public class TestModulePackages extends JavadocTester {
         }
         sb.append("<td class=\"colLast\">" + desc + "</td>");
 
-        checkOutput(moduleName + "-summary.html", true, sb.toString());
+        checkOutput(moduleName + "/module-summary.html", true, sb.toString());
     }
 
 }

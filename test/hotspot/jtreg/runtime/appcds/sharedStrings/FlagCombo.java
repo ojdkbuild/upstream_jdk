@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,7 @@
 /*
  * @test
  * @summary Test relevant combinations of command line flags with shared strings
- * @requires (vm.opt.UseCompressedOops == null) | (vm.opt.UseCompressedOops == true)
- * @requires (sun.arch.data.model != "32") & (os.family != "windows")
- * @requires (vm.gc=="null")
+ * @requires vm.cds.archived.java.heap
  * @library /test/lib /test/hotspot/jtreg/runtime/appcds
  * @modules java.base/jdk.internal.misc
  * @modules java.management
@@ -47,10 +45,8 @@ public class FlagCombo {
 
         SharedStringsUtils.runWithArchive("HelloString", "-XX:+UseG1GC");
 
-        if (BuildHelper.isCommercialBuild()) {
-            SharedStringsUtils.runWithArchiveAuto("HelloString", "-XX:+UnlockCommercialFeatures",
-                "-XX:StartFlightRecording=dumponexit=true");
-        }
+        SharedStringsUtils.runWithArchiveAuto("HelloString",
+           "-XX:StartFlightRecording=dumponexit=true");
 
         SharedStringsUtils.runWithArchive("HelloString", "-XX:+UnlockDiagnosticVMOptions",
            "-XX:NativeMemoryTracking=detail", "-XX:+PrintNMTStatistics");

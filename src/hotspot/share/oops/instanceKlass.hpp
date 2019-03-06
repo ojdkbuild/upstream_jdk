@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@
 #include "classfile/classLoaderData.hpp"
 #include "classfile/moduleEntry.hpp"
 #include "classfile/packageEntry.hpp"
-#include "gc/shared/specialized_oop_closures.hpp"
 #include "memory/referenceType.hpp"
 #include "oops/annotations.hpp"
 #include "oops/constMethod.hpp"
@@ -38,10 +37,13 @@
 #include "oops/klassVtable.hpp"
 #include "runtime/handles.hpp"
 #include "runtime/os.hpp"
-#include "trace/traceMacros.hpp"
 #include "utilities/accessFlags.hpp"
 #include "utilities/align.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_JFR
+#include "jfr/support/jfrKlassExtension.hpp"
+#endif
+
 
 // An InstanceKlass is the VM level representation of a Java class.
 // It contains all information needed for at class at execution runtime.
@@ -87,9 +89,8 @@ class FieldPrinter: public FieldClosure {
 };
 #endif  // !PRODUCT
 
-// ValueObjs embedded in klass. Describes where oops are located in instances of
-// this klass.
-class OopMapBlock VALUE_OBJ_CLASS_SPEC {
+// Describes where oops are located in instances of this klass.
+class OopMapBlock {
  public:
   // Byte offset of the first oop mapped by this block.
   int offset() const          { return _offset; }
@@ -118,8 +119,11 @@ class InstanceKlass: public Klass {
   friend class ClassFileParser;
   friend class CompileReplay;
 
+ public:
+  static const KlassID ID = InstanceKlassID;
+
  protected:
-  InstanceKlass(const ClassFileParser& parser, unsigned kind);
+  InstanceKlass(const ClassFileParser& parser, unsigned kind, KlassID id = ID);
 
  public:
   InstanceKlass() { assert(DumpSharedSpaces || UseSharedSpaces, "only for CDS"); }
@@ -135,10 +139,7 @@ class InstanceKlass: public Klass {
     initialization_error                // error happened during initialization
   };
 
-  static int number_of_instance_classes() { return _total_instanceKlass_count; }
-
  private:
-  static volatile int _total_instanceKlass_count;
   static InstanceKlass* allocate_instance_klass(const ClassFileParser& parser, TRAPS);
 
  protected:
@@ -165,6 +166,19 @@ class InstanceKlass: public Klass {
   // and EnclosingMethod attributes the _inner_classes array length is
   // number_of_inner_classes * 4 + enclosing_method_attribute_size.
   Array<jushort>* _inner_classes;
+
+  // The NestMembers attribute. An array of shorts, where each is a
+  // class info index for the class that is a nest member. This data
+  // has not been validated.
+  Array<jushort>* _nest_members;
+
+  // The NestHost attribute. The class info index for the class
+  // that is the nest-host of this class. This data has not been validated.
+  jushort _nest_host_index;
+
+  // Resolved nest-host klass: either true nest-host or self if we are not nested.
+  // By always being set it makes nest-member access checks simpler.
+  InstanceKlass* _nest_host;
 
   // the source debug extension for this klass, NULL if not specified.
   // Specified as UTF-8 string without terminating zero byte in the classfile,
@@ -254,6 +268,7 @@ class InstanceKlass: public Klass {
   u1              _init_state;                    // state of class
   u1              _reference_type;                // reference type
 
+  u2              _this_class_index;              // constant pool entry
 #if INCLUDE_JVMTI
   JvmtiCachedClassFieldMap* _jvmti_cached_class_field_map;  // JVMTI: used during heap iteration
 #endif
@@ -324,6 +339,10 @@ class InstanceKlass: public Klass {
   }
   bool is_shared_app_class() const {
     return (_misc_flags & _misc_is_shared_app_class) != 0;
+  }
+
+  void clear_class_loader_type() {
+    _misc_flags &= ~loader_type_bits();
   }
 
   void set_class_loader_type(s2 loader_type) {
@@ -431,6 +450,24 @@ class InstanceKlass: public Klass {
   Array<u2>* inner_classes() const       { return _inner_classes; }
   void set_inner_classes(Array<u2>* f)   { _inner_classes = f; }
 
+  // nest members
+  Array<u2>* nest_members() const     { return _nest_members; }
+  void set_nest_members(Array<u2>* m) { _nest_members = m; }
+
+  // nest-host index
+  jushort nest_host_index() const { return _nest_host_index; }
+  void set_nest_host_index(u2 i)  { _nest_host_index = i; }
+
+private:
+  // Called to verify that k is a member of this nest - does not look at k's nest-host
+  bool has_nest_member(InstanceKlass* k, TRAPS) const;
+public:
+  // Returns nest-host class, resolving and validating it if needed
+  // Returns NULL if an exception occurs during loading, or validation fails
+  InstanceKlass* nest_host(Symbol* validationException, TRAPS);
+  // Check if this klass is a nestmate of k - resolves this nest-host and k's
+  bool has_nestmate_access_to(InstanceKlass* k, TRAPS);
+
   enum InnerClassAttributeOffset {
     // From http://mirror.eng/products/jdk/1.1/docs/guide/innerclasses/spec/innerclasses.doc10.html#18814
     inner_class_inner_class_info_offset = 0,
@@ -467,7 +504,7 @@ class InstanceKlass: public Klass {
  private:
   // Check prohibited package ("java/" only loadable by boot or platform loaders)
   static void check_prohibited_package(Symbol* class_name,
-                                       Handle class_loader,
+                                       ClassLoaderData* loader_data,
                                        TRAPS);
  public:
   // tell if two classes have the same enclosing class (at package level)
@@ -520,6 +557,10 @@ class InstanceKlass: public Klass {
     _reference_type = (u1)t;
   }
 
+  // this class cp index
+  u2 this_class_index() const             { return _this_class_index; }
+  void set_this_class_index(u2 index)     { _this_class_index = index; }
+
   static ByteSize reference_type_offset() { return in_ByteSize(offset_of(InstanceKlass, _reference_type)); }
 
   // find local field, returns true if found
@@ -546,10 +587,12 @@ class InstanceKlass: public Klass {
                              const Symbol* signature);
 
   // find a local method, but skip static methods
-  Method* find_instance_method(const Symbol* name, const Symbol* signature) const;
+  Method* find_instance_method(const Symbol* name, const Symbol* signature,
+                               PrivateLookupMode private_mode = find_private) const;
   static Method* find_instance_method(const Array<Method*>* methods,
                                       const Symbol* name,
-                                      const Symbol* signature);
+                                      const Symbol* signature,
+                                      PrivateLookupMode private_mode = find_private);
 
   // find a local method (returns NULL if not found)
   Method* find_local_method(const Symbol* name,
@@ -577,7 +620,8 @@ class InstanceKlass: public Klass {
   // lookup operation (returns NULL if not found)
   Method* uncached_lookup_method(const Symbol* name,
                                  const Symbol* signature,
-                                 OverpassLookupMode overpass_mode) const;
+                                 OverpassLookupMode overpass_mode,
+                                 PrivateLookupMode private_mode = find_private) const;
 
   // lookup a method in all the interfaces that this class implements
   // (returns NULL if not found)
@@ -910,7 +954,7 @@ public:
   instanceOop allocate_instance(TRAPS);
 
   // additional member function to return a handle
-  instanceHandle allocate_instance_handle(TRAPS)      { return instanceHandle(THREAD, allocate_instance(THREAD)); }
+  instanceHandle allocate_instance_handle(TRAPS);
 
   objArrayOop allocate_objArray(int n, int length, TRAPS);
   // Helper function
@@ -956,7 +1000,7 @@ public:
 
   // support for stub routines
   static ByteSize init_state_offset()  { return in_ByteSize(offset_of(InstanceKlass, _init_state)); }
-  TRACE_DEFINE_KLASS_TRACE_ID_OFFSET;
+  JFR_ONLY(DEFINE_KLASS_TRACE_ID_OFFSET;)
   static ByteSize init_thread_offset() { return in_ByteSize(offset_of(InstanceKlass, _init_thread)); }
 
   // subclass/subinterface checks
@@ -1007,7 +1051,8 @@ public:
 
   // virtual operations from Klass
   bool is_leaf_class() const               { return _subklass == NULL; }
-  GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots);
+  GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots,
+                                                  Array<Klass*>* transitive_interfaces);
   bool compute_is_subtype_of(Klass* k);
   bool can_be_primary_super_slow() const;
   int oop_size(oop obj)  const             { return size_helper(); }
@@ -1069,7 +1114,7 @@ public:
 
   int  itable_offset_in_words() const { return start_of_itable() - (intptr_t*)this; }
 
-  address static_field_addr(int offset);
+  oop static_field_base_raw() { return java_mirror(); }
 
   OopMapBlock* start_of_nonstatic_oop_maps() const {
     return (OopMapBlock*)(start_of_itable() + itable_length());
@@ -1142,10 +1187,12 @@ public:
   void adjust_default_methods(InstanceKlass* holder, bool* trace_name_printed);
 #endif // INCLUDE_JVMTI
 
-  void clean_weak_instanceklass_links(BoolObjectClosure* is_alive);
-  void clean_implementors_list(BoolObjectClosure* is_alive);
-  void clean_method_data(BoolObjectClosure* is_alive);
+  void clean_weak_instanceklass_links();
+ private:
+  void clean_implementors_list();
+  void clean_method_data();
 
+ public:
   // Explicit metaspace deallocation of fields
   // For RedefineClasses and class file parsing errors, we need to deallocate
   // instanceKlasses and the metadata they point to.
@@ -1171,7 +1218,7 @@ public:
 
   // GC specific object visitors
   //
-#if INCLUDE_ALL_GCS
+#if INCLUDE_PARALLELGC
   // Parallel Scavenge
   void oop_ps_push_contents(  oop obj, PSPromotionManager* pm);
   // Parallel Compact
@@ -1180,89 +1227,56 @@ public:
 #endif
 
   // Oop fields (and metadata) iterators
-  //  [nv = true]  Use non-virtual calls to do_oop_nv.
-  //  [nv = false] Use virtual calls to do_oop.
   //
   // The InstanceKlass iterators also visits the Object's klass.
 
   // Forward iteration
  public:
   // Iterate over all oop fields in the oop maps.
-  template <bool nv, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline void oop_oop_iterate_oop_maps(oop obj, OopClosureType* closure);
 
- protected:
   // Iterate over all oop fields and metadata.
-  template <bool nv, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline int oop_oop_iterate(oop obj, OopClosureType* closure);
 
- private:
-  // Iterate over all oop fields in the oop maps.
-  // Specialized for [T = oop] or [T = narrowOop].
-  template <bool nv, typename T, class OopClosureType>
-  inline void oop_oop_iterate_oop_maps_specialized(oop obj, OopClosureType* closure);
-
   // Iterate over all oop fields in one oop map.
-  template <bool nv, typename T, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline void oop_oop_iterate_oop_map(OopMapBlock* map, oop obj, OopClosureType* closure);
 
 
   // Reverse iteration
-#if INCLUDE_ALL_GCS
- public:
-  // Iterate over all oop fields in the oop maps.
-  template <bool nv, class OopClosureType>
-  inline void oop_oop_iterate_oop_maps_reverse(oop obj, OopClosureType* closure);
-
- protected:
   // Iterate over all oop fields and metadata.
-  template <bool nv, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline int oop_oop_iterate_reverse(oop obj, OopClosureType* closure);
 
  private:
   // Iterate over all oop fields in the oop maps.
-  // Specialized for [T = oop] or [T = narrowOop].
-  template <bool nv, typename T, class OopClosureType>
-  inline void oop_oop_iterate_oop_maps_specialized_reverse(oop obj, OopClosureType* closure);
+  template <typename T, class OopClosureType>
+  inline void oop_oop_iterate_oop_maps_reverse(oop obj, OopClosureType* closure);
 
   // Iterate over all oop fields in one oop map.
-  template <bool nv, typename T, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline void oop_oop_iterate_oop_map_reverse(OopMapBlock* map, oop obj, OopClosureType* closure);
-#endif
 
 
   // Bounded range iteration
  public:
   // Iterate over all oop fields in the oop maps.
-  template <bool nv, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline void oop_oop_iterate_oop_maps_bounded(oop obj, OopClosureType* closure, MemRegion mr);
 
- protected:
   // Iterate over all oop fields and metadata.
-  template <bool nv, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline int oop_oop_iterate_bounded(oop obj, OopClosureType* closure, MemRegion mr);
 
  private:
-  // Iterate over all oop fields in the oop maps.
-  // Specialized for [T = oop] or [T = narrowOop].
-  template <bool nv, typename T, class OopClosureType>
-  inline void oop_oop_iterate_oop_maps_specialized_bounded(oop obj, OopClosureType* closure, MemRegion mr);
-
   // Iterate over all oop fields in one oop map.
-  template <bool nv, typename T, class OopClosureType>
+  template <typename T, class OopClosureType>
   inline void oop_oop_iterate_oop_map_bounded(OopMapBlock* map, oop obj, OopClosureType* closure, MemRegion mr);
 
 
  public:
-
-  ALL_OOP_OOP_ITERATE_CLOSURES_1(OOP_OOP_ITERATE_DECL)
-  ALL_OOP_OOP_ITERATE_CLOSURES_2(OOP_OOP_ITERATE_DECL)
-
-#if INCLUDE_ALL_GCS
-  ALL_OOP_OOP_ITERATE_CLOSURES_1(OOP_OOP_ITERATE_DECL_BACKWARDS)
-  ALL_OOP_OOP_ITERATE_CLOSURES_2(OOP_OOP_ITERATE_DECL_BACKWARDS)
-#endif // INCLUDE_ALL_GCS
-
   u2 idnum_allocated_count() const      { return _idnum_allocated_count; }
 
 public:

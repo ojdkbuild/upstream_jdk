@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,21 +43,10 @@ import java.util.stream.Collectors;
 
 public class UpgradeableModules {
     private static final List<String> UPGRADEABLE_MODULES =
-        List.of("java.activation",
-                "java.compiler",
-                "java.corba",
-                "java.jnlp",
-                "java.transaction",
-                "java.xml.bind",
-                "java.xml.ws",
-                "java.xml.ws.annotation",
+        List.of("java.compiler",
+                "jdk.aot",
                 "jdk.internal.vm.compiler",
-                "jdk.deploy",
-                "jdk.javaws",
-                "jdk.plugin",
-                "jdk.plugin.dom",
-                "jdk.xml.bind",
-                "jdk.xml.ws");
+                "jdk.internal.vm.compiler.management");
 
     public static void main(String... args) {
         Set<String> hashedModules = hashedModules();

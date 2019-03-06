@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.core.test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -44,7 +46,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
 
     public static final int N = 10000;
 
-    private static final SchedulingStrategy[] Strategies = new SchedulingStrategy[]{SchedulingStrategy.EARLIEST};
+    private static final SchedulingStrategy[] Strategies = new SchedulingStrategy[]{SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER};
 
     @Test
     public void testLongAddChain() {

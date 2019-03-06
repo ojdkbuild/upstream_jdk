@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 #define SHARE_VM_CLASSFILE_CLASSFILEPARSER_HPP
 
 #include "memory/referenceType.hpp"
-#include "runtime/handles.inline.hpp"
+#include "oops/annotations.hpp"
 #include "oops/constantPool.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "utilities/accessFlags.hpp"
@@ -49,7 +49,7 @@ class TempNewSymbol;
 //
 // The bytes describing the class file structure is read from a Stream object
 
-class ClassFileParser VALUE_OBJ_CLASS_SPEC {
+class ClassFileParser {
 
  class ClassAnnotationCollector;
  class FieldAllocationCount;
@@ -97,6 +97,8 @@ class ClassFileParser VALUE_OBJ_CLASS_SPEC {
   Array<u2>* _fields;
   Array<Method*>* _methods;
   Array<u2>* _inner_classes;
+  Array<u2>* _nest_members;
+  u2 _nest_host;
   Array<Klass*>* _local_interfaces;
   Array<Klass*>* _transitive_interfaces;
   Annotations* _combined_annotations;
@@ -290,6 +292,10 @@ class ClassFileParser VALUE_OBJ_CLASS_SPEC {
                                                u2 enclosing_method_method_index,
                                                TRAPS);
 
+  u2 parse_classfile_nest_members_attribute(const ClassFileStream* const cfs,
+                                            const u1* const nest_members_attribute_start,
+                                            TRAPS);
+
   void parse_classfile_attributes(const ClassFileStream* const cfs,
                                   ConstantPool* cp,
                                   ClassAnnotationCollector* parsed_annotations,
@@ -434,12 +440,7 @@ class ClassFileParser VALUE_OBJ_CLASS_SPEC {
     return _cp_patches->at(index);
   }
 
-  Handle clear_cp_patch_at(int index) {
-    Handle patch = cp_patch_at(index);
-    _cp_patches->at_put(index, Handle());
-    assert(!has_cp_patch_at(index), "");
-    return patch;
-  }
+  Handle clear_cp_patch_at(int index);
 
   void patch_class(ConstantPool* cp, int class_index, Klass* k, Symbol* name);
   void patch_constant_pool(ConstantPool* cp,
@@ -530,7 +531,7 @@ class ClassFileParser VALUE_OBJ_CLASS_SPEC {
   const GrowableArray<Handle>* cp_patches() const { return _cp_patches; }
   ClassLoaderData* loader_data() const { return _loader_data; }
   const Symbol* class_name() const { return _class_name; }
-  const Klass* super_klass() const { return _super_klass; }
+  const InstanceKlass* super_klass() const { return _super_klass; }
 
   ReferenceType reference_type() const { return _rt; }
   AccessFlags access_flags() const { return _access_flags; }
