@@ -59,7 +59,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBINSTRUMENT, \
     LIBS_macosx := -ljli -liconv -framework Cocoa -framework Security \
         -framework ApplicationServices, \
     LIBS_windows := jvm.lib $(WIN_JAVA_LIB) advapi32.lib \
-        $(WINDOWS_JLI_LIB), \
+        $(WINDOWS_JLI_LIB), $(LIBZ_LIBS_MT) \
 ))
 
 ifeq ($(OPENJDK_TARGET_OS), aix)
