@@ -49,6 +49,12 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBJPEG],
 [
   AC_ARG_WITH(libjpeg, [AS_HELP_STRING([--with-libjpeg],
       [use libjpeg from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+  USE_EXTERNAL_LIBJPEG=true
+  LIBJPEG_CFLAGS=`pkg-config ojdkbuild_libjpeg-turbo --cflags --msvc-syntax`
+  LIBJPEG_LIBS=`pkg-config ojdkbuild_libjpeg-turbo --libs --msvc-syntax`
+  AC_MSG_CHECKING([for which libjpeg to use])
+  AC_MSG_RESULT(ojdkbuild)
+  if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
 
   AC_MSG_CHECKING([for which libjpeg to use])
   # default is bundled
@@ -72,7 +78,10 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBJPEG],
     AC_MSG_ERROR([Invalid use of --with-libjpeg: ${with_libjpeg}, use 'system' or 'bundled'])
   fi
 
+  fi
   AC_SUBST(USE_EXTERNAL_LIBJPEG)
+  AC_SUBST(LIBJPEG_CFLAGS)
+  AC_SUBST(LIBJPEG_LIBS)
 ])
 
 ################################################################################
@@ -82,6 +91,12 @@ AC_DEFUN_ONCE([LIB_SETUP_GIFLIB],
 [
   AC_ARG_WITH(giflib, [AS_HELP_STRING([--with-giflib],
       [use giflib from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+  USE_EXTERNAL_LIBGIF=true
+  GIFLIB_CFLAGS=`pkg-config ojdkbuild_giflib --cflags --msvc-syntax`
+  GIFLIB_LIBS=`pkg-config ojdkbuild_giflib --libs --msvc-syntax`
+  AC_MSG_CHECKING([for which giflib to use])
+  AC_MSG_RESULT(ojdkbuild)
+  if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
 
   AC_MSG_CHECKING([for which giflib to use])
   # default is bundled
@@ -105,7 +120,10 @@ AC_DEFUN_ONCE([LIB_SETUP_GIFLIB],
     AC_MSG_ERROR([Invalid value of --with-giflib: ${with_giflib}, use 'system' or 'bundled'])
   fi
 
+  fi
   AC_SUBST(USE_EXTERNAL_LIBGIF)
+  AC_SUBST(GIFLIB_CFLAGS)
+  AC_SUBST(GIFLIB_LIBS)
 ])
 
 ################################################################################
@@ -115,6 +133,12 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBPNG],
 [
   AC_ARG_WITH(libpng, [AS_HELP_STRING([--with-libpng],
      [use libpng from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+  USE_EXTERNAL_LIBPNG=true
+  PNG_CFLAGS=`pkg-config ojdkbuild_libpng --cflags --msvc-syntax`
+  PNG_LIBS=`pkg-config ojdkbuild_libpng --libs --msvc-syntax`
+  AC_MSG_CHECKING([for which libpng to use])
+  AC_MSG_RESULT(ojdkbuild)
+  if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
 
   PKG_CHECK_MODULES(PNG, libpng, [LIBPNG_FOUND=yes], [LIBPNG_FOUND=no])
   AC_MSG_CHECKING([for which libpng to use])
@@ -144,6 +168,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBPNG],
     AC_MSG_ERROR([Invalid value of --with-libpng: ${with_libpng}, use 'system' or 'bundled'])
   fi
 
+  fi
   AC_SUBST(USE_EXTERNAL_LIBPNG)
   AC_SUBST(PNG_CFLAGS)
   AC_SUBST(PNG_LIBS)
@@ -156,6 +181,13 @@ AC_DEFUN_ONCE([LIB_SETUP_ZLIB],
 [
   AC_ARG_WITH(zlib, [AS_HELP_STRING([--with-zlib],
       [use zlib from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+  USE_EXTERNAL_LIBZ=true
+  LIBZ_CFLAGS=`pkg-config ojdkbuild_zlib --cflags --msvc-syntax`
+  LIBZ_LIBS_MD=`pkg-config ojdkbuild_zlib_md --libs --msvc-syntax`
+  LIBZ_LIBS_MT=`pkg-config ojdkbuild_zlib_mt --libs --msvc-syntax`
+  AC_MSG_CHECKING([for which zlib to use])
+  AC_MSG_RESULT(ojdkbuild)
+  if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
 
   AC_CHECK_LIB(z, compress,
       [ ZLIB_FOUND=yes ],
@@ -220,9 +252,12 @@ AC_DEFUN_ONCE([LIB_SETUP_ZLIB],
     LIBZ_LIBS="-lz"
   fi
 
+  fi
   AC_SUBST(USE_EXTERNAL_LIBZ)
   AC_SUBST(LIBZ_CFLAGS)
   AC_SUBST(LIBZ_LIBS)
+  AC_SUBST(LIBZ_LIBS_MD)
+  AC_SUBST(LIBZ_LIBS_MT)
 ])
 
 ################################################################################
