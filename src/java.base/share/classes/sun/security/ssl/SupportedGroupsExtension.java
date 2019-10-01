@@ -214,17 +214,6 @@ final class SupportedGroupsExtension {
                         // Secondary XDH curves
                         NamedGroup.X448,
 
-                        // Secondary NIST curves
-                        NamedGroup.SECT283_K1,
-                        NamedGroup.SECT283_R1,
-                        NamedGroup.SECT409_K1,
-                        NamedGroup.SECT409_R1,
-                        NamedGroup.SECT571_K1,
-                        NamedGroup.SECT571_R1,
-
-                        // non-NIST curves
-                        NamedGroup.SECP256_K1,
-
                         // FFDHE (RFC 7919)
                         NamedGroup.FFDHE_2048,
                         NamedGroup.FFDHE_3072,

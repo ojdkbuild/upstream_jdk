@@ -34,9 +34,9 @@
  * @library /test/lib .. ../../../../javax/net/ssl/TLSCommon
  * @library ../../../../java/security/testlibrary
  * @modules jdk.crypto.cryptoki
- * @run main/othervm -Djdk.tls.namedGroups="secp256r1,sect193r1"
+ * @run main/othervm -Djdk.tls.namedGroups="secp256r1"
  *      ClientJSSEServerJSSE
- * @run main/othervm -Djdk.tls.namedGroups="secp256r1,sect193r1"
+ * @run main/othervm -Djdk.tls.namedGroups="secp256r1"
  *      ClientJSSEServerJSSE sm policy
  */
 
