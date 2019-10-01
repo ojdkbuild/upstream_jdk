@@ -606,7 +606,8 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusRequestSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -710,13 +711,13 @@ final class CertStatusExtension {
             CertStatusRequestSpec requestedCsr = (CertStatusRequestSpec)
                     chc.handshakeExtensions.get(CH_STATUS_REQUEST);
             if (requestedCsr == null) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected status_request extension in ServerHello");
             }
 
             // Parse the extension.
             if (buffer.hasRemaining()) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                   "Invalid status_request extension in ServerHello message: " +
                   "the extension data must be empty");
             }
@@ -963,7 +964,8 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusRequestV2Spec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -1065,13 +1067,13 @@ final class CertStatusExtension {
             CertStatusRequestV2Spec requestedCsr = (CertStatusRequestV2Spec)
                     chc.handshakeExtensions.get(CH_STATUS_REQUEST_V2);
             if (requestedCsr == null) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected status_request_v2 extension in ServerHello");
             }
 
             // Parse the extension.
             if (buffer.hasRemaining()) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                   "Invalid status_request_v2 extension in ServerHello: " +
                   "the extension data must be empty");
             }
@@ -1155,10 +1157,10 @@ final class CertStatusExtension {
                                 respBytes);
                 producedData = certResp.toByteArray();
             } catch (CertificateException ce) {
-                throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                         "Failed to parse server certificates", ce);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.BAD_CERT_STATUS_RESPONSE,
+                shc.conContext.fatal(Alert.BAD_CERT_STATUS_RESPONSE,
                         "Failed to parse certificate status response", ioe);
             }
 
@@ -1186,7 +1188,8 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusResponseSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.DECODE_ERROR, ioe);
+                chc.conContext.fatal(Alert.DECODE_ERROR, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             if (chc.sslContext.isStaplingEnabled(true)) {

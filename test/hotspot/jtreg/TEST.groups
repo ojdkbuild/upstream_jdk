@@ -40,8 +40,7 @@ hotspot_compiler_all_gcs = \
   -:tier1_compiler_not_cms
 
 hotspot_gc = \
-  gc \
-  -gc/nvdimm
+  gc
 
 hotspot_runtime = \
   runtime
@@ -59,8 +58,7 @@ hotspot_misc = \
  -:hotspot_compiler \
  -:hotspot_gc \
  -:hotspot_runtime \
- -:hotspot_serviceability \
- -gc/nvdimm
+ -:hotspot_serviceability
 
 hotspot_native_sanity = \
   native_sanity
@@ -192,13 +190,12 @@ tier1_gc_2 = \
   -gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java \
   -gc/cms/TestMBeanCMS.java \
   -gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java \
-  -gc/shenandoah \
-  -gc/nvdimm
+  -gc/shenandoah
 
 gc_epsilon = \
   gc/epsilon/ \
   gc/CriticalNativeArgs.java \
-  gc/stress/CriticalNativeStress.java
+  gc/stress/CriticalNativeStress.java 
 
 tier1_gc_gcold = \
   gc/stress/gcold/TestGCOldWithG1.java \
@@ -211,7 +208,7 @@ tier1_gc_gcbasher = \
   gc/stress/gcbasher/TestGCBasherWithCMS.java \
   gc/stress/gcbasher/TestGCBasherWithSerial.java \
   gc/stress/gcbasher/TestGCBasherWithParallel.java
-
+  
 tier1_gc_shenandoah = \
   gc/shenandoah/options/ \
   gc/shenandoah/compiler/ \

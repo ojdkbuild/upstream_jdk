@@ -185,10 +185,12 @@ final class RenegoInfoExtension {
                     return null;
                 } else {
                     // terminate the session.
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "insecure renegotiation is not allowed");
                 }
             }
+
+            return null;
         }
     }
 
@@ -224,13 +226,14 @@ final class RenegoInfoExtension {
             try {
                 spec = new RenegotiationInfoSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             if (!shc.conContext.isNegotiated) {
                 // initial handshaking.
                 if (spec.renegotiatedConnection.length != 0) {
-                    throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                    shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Invalid renegotiation_info extension data: not empty");
                 }
                 shc.conContext.secureRenegotiation = true;
@@ -238,14 +241,14 @@ final class RenegoInfoExtension {
                 if (!shc.conContext.secureRenegotiation) {
                     // Unexpected RI extension for insecure renegotiation,
                     // abort the handshake with a fatal handshake_failure alert.
-                    throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "The renegotiation_info is present in a insecure " +
                             "renegotiation");
                 } else {
                     // verify the client_verify_data value
                     if (!Arrays.equals(shc.conContext.clientVerifyData,
                             spec.renegotiatedConnection)) {
-                        throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                        shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                             "Invalid renegotiation_info extension data: " +
                             "incorrect verify data in ClientHello");
                     }
@@ -292,7 +295,7 @@ final class RenegoInfoExtension {
                 }
 
                 if (!HandshakeContext.allowLegacyHelloMessages) {
-                    throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Failed to negotiate the use of secure renegotiation");
                 }   // otherwise, allow legacy hello message
 
@@ -304,7 +307,7 @@ final class RenegoInfoExtension {
                 shc.conContext.secureRenegotiation = false;
             } else if (shc.conContext.secureRenegotiation) {
                 // Require secure renegotiation, terminate the connection.
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Inconsistent secure renegotiation indication");
             } else {    // renegotiation, not secure
                 if (HandshakeContext.allowUnsafeRenegotiation) {
@@ -317,7 +320,7 @@ final class RenegoInfoExtension {
                     if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                         SSLLogger.fine("Terminate insecure renegotiation");
                     }
-                    throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Unsafe renegotiation is not allowed");
                 }
             }
@@ -427,7 +430,7 @@ final class RenegoInfoExtension {
             if (requestedSpec == null &&
                     !chc.activeCipherSuites.contains(
                             CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)) {
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "Missing renegotiation_info and SCSV detected in " +
                     "ClientHello");
             }
@@ -437,7 +440,8 @@ final class RenegoInfoExtension {
             try {
                 spec = new RenegotiationInfoSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
 
@@ -448,7 +452,7 @@ final class RenegoInfoExtension {
                 // and if it is not, MUST abort the handshake (by sending
                 // a fatal handshake_failure alert). [RFC 5746]
                 if (spec.renegotiatedConnection.length != 0) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +
                         "not empty renegotiated_connection");
                 }
@@ -463,7 +467,7 @@ final class RenegoInfoExtension {
                 int infoLen = chc.conContext.clientVerifyData.length +
                               chc.conContext.serverVerifyData.length;
                 if (spec.renegotiatedConnection.length != infoLen) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +
                         "invalid renegotiated_connection length (" +
                         spec.renegotiatedConnection.length + ")");
@@ -472,14 +476,14 @@ final class RenegoInfoExtension {
                 byte[] cvd = chc.conContext.clientVerifyData;
                 if (!Arrays.equals(spec.renegotiatedConnection,
                         0, cvd.length, cvd, 0, cvd.length)) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +
                         "unmatched client_verify_data value");
                 }
                 byte[] svd = chc.conContext.serverVerifyData;
                 if (!Arrays.equals(spec.renegotiatedConnection,
                         cvd.length, infoLen, svd, 0, svd.length)) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid renegotiation_info in ServerHello: " +
                         "unmatched server_verify_data value");
                 }
@@ -512,7 +516,7 @@ final class RenegoInfoExtension {
             if (requestedSpec == null &&
                     !chc.activeCipherSuites.contains(
                             CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)) {
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "Missing renegotiation_info and SCSV detected in " +
                     "ClientHello");
             }
@@ -520,7 +524,7 @@ final class RenegoInfoExtension {
             if (!chc.conContext.isNegotiated) {
                 // initial handshaking.
                 if (!HandshakeContext.allowLegacyHelloMessages) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Failed to negotiate the use of secure renegotiation");
                 }   // otherwise, allow legacy hello message
 
@@ -532,7 +536,7 @@ final class RenegoInfoExtension {
                 chc.conContext.secureRenegotiation = false;
             } else if (chc.conContext.secureRenegotiation) {
                 // Require secure renegotiation, terminate the connection.
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Inconsistent secure renegotiation indication");
             } else {    // renegotiation, not secure
                 if (HandshakeContext.allowUnsafeRenegotiation) {
@@ -545,7 +549,7 @@ final class RenegoInfoExtension {
                     if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                         SSLLogger.fine("Terminate insecure renegotiation");
                     }
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Unsafe renegotiation is not allowed");
                 }
             }

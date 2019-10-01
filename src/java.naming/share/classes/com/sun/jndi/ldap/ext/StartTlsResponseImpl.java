@@ -288,8 +288,7 @@ final public class StartTlsResponseImpl extends StartTlsResponse {
      */
     public void setConnection(Connection ldapConnection, String hostname) {
         this.ldapConnection = ldapConnection;
-        this.hostname = (hostname == null || hostname.isEmpty())
-            ? ldapConnection.host : hostname;
+        this.hostname = (hostname != null) ? hostname : ldapConnection.host;
         originalInputStream = ldapConnection.inStream;
         originalOutputStream = ldapConnection.outStream;
     }

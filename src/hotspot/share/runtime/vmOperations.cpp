@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -333,7 +333,8 @@ void VM_ThreadDump::doit() {
       if (_with_locked_synchronizers) {
         tcl = concurrent_locks.thread_concurrent_locks(jt);
       }
-      snapshot_thread(jt, tcl);
+      ThreadSnapshot* ts = snapshot_thread(jt, tcl);
+      _result->add_thread_snapshot(ts);
     }
   } else {
     // Snapshot threads in the given _threads array
@@ -344,7 +345,7 @@ void VM_ThreadDump::doit() {
       if (th() == NULL) {
         // skip if the thread doesn't exist
         // Add a dummy snapshot
-        _result->add_thread_snapshot();
+        _result->add_thread_snapshot(new ThreadSnapshot());
         continue;
       }
 
@@ -361,22 +362,24 @@ void VM_ThreadDump::doit() {
           jt->is_exiting() ||
           jt->is_hidden_from_external_view())  {
         // add a NULL snapshot if skipped
-        _result->add_thread_snapshot();
+        _result->add_thread_snapshot(new ThreadSnapshot());
         continue;
       }
       ThreadConcurrentLocks* tcl = NULL;
       if (_with_locked_synchronizers) {
         tcl = concurrent_locks.thread_concurrent_locks(jt);
       }
-      snapshot_thread(jt, tcl);
+      ThreadSnapshot* ts = snapshot_thread(jt, tcl);
+      _result->add_thread_snapshot(ts);
     }
   }
 }
 
-void VM_ThreadDump::snapshot_thread(JavaThread* java_thread, ThreadConcurrentLocks* tcl) {
-  ThreadSnapshot* snapshot = _result->add_thread_snapshot(java_thread);
+ThreadSnapshot* VM_ThreadDump::snapshot_thread(JavaThread* java_thread, ThreadConcurrentLocks* tcl) {
+  ThreadSnapshot* snapshot = new ThreadSnapshot(_result->t_list(), java_thread);
   snapshot->dump_stack_at_safepoint(_max_depth, _with_locked_monitors);
   snapshot->set_concurrent_locks(tcl);
+  return snapshot;
 }
 
 volatile bool VM_Exit::_vm_exited = false;

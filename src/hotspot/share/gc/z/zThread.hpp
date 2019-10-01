@@ -29,8 +29,6 @@
 
 class ZThread : public AllStatic {
   friend class ZTask;
-  friend class ZWorkersInitializeTask;
-  friend class ZRuntimeWorkersInitializeTask;
 
 private:
   static __thread bool      _initialized;
@@ -38,7 +36,6 @@ private:
   static __thread bool      _is_vm;
   static __thread bool      _is_java;
   static __thread bool      _is_worker;
-  static __thread bool      _is_runtime_worker;
   static __thread uint      _worker_id;
 
   static void initialize();
@@ -48,9 +45,6 @@ private:
       initialize();
     }
   }
-
-  static void set_worker();
-  static void set_runtime_worker();
 
   static bool has_worker_id();
   static void set_worker_id(uint worker_id);
@@ -77,11 +71,6 @@ public:
   static bool is_worker() {
     ensure_initialized();
     return _is_worker;
-  }
-
-  static bool is_runtime_worker() {
-    ensure_initialized();
-    return _is_runtime_worker;
   }
 
   static uint worker_id() {

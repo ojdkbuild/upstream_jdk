@@ -105,12 +105,6 @@ final class ChangeCipherSpec {
                 throw new SSLException("Algorithm missing:  ", gse);
             }
 
-            if (writeCipher == null) {
-                throw hc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                    "Illegal cipher suite (" + ncs +
-                    ") and protocol version (" + hc.negotiatedProtocol + ")");
-            }
-
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ChangeCipherSpec message");
             }
@@ -142,7 +136,7 @@ final class ChangeCipherSpec {
 
             // parse
             if (message.remaining() != 1 || message.get() != 1) {
-                throw tc.fatal(Alert.UNEXPECTED_MESSAGE,
+                tc.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Malformed or unexpected ChangeCipherSpec message");
             }
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -151,7 +145,7 @@ final class ChangeCipherSpec {
 
             // validate
             if (tc.handshakeContext == null) {
-                throw tc.fatal(Alert.HANDSHAKE_FAILURE,
+                tc.fatal(Alert.HANDSHAKE_FAILURE,
                         "Unexpected ChangeCipherSpec message");
             }
 
@@ -159,7 +153,7 @@ final class ChangeCipherSpec {
             HandshakeContext hc = tc.handshakeContext;
 
             if (hc.handshakeKeyDerivation == null) {
-                throw tc.fatal(Alert.UNEXPECTED_MESSAGE,
+                tc.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Unexpected ChangeCipherSpec message");
             }
 
@@ -201,14 +195,6 @@ final class ChangeCipherSpec {
                     // unlikely
                     throw new SSLException("Algorithm missing:  ", gse);
                 }
-
-                if (readCipher == null) {
-                    throw hc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                        "Illegal cipher suite (" + hc.negotiatedCipherSuite +
-                        ") and protocol version (" + hc.negotiatedProtocol +
-                        ")");
-                }
-
                 tc.inputRecord.changeReadCiphers(readCipher);
             } else {
                 throw new UnsupportedOperationException("Not supported.");
@@ -239,7 +225,7 @@ final class ChangeCipherSpec {
 
             // parse
             if (message.remaining() != 1 || message.get() != 1) {
-                throw tc.fatal(Alert.UNEXPECTED_MESSAGE,
+                tc.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Malformed or unexpected ChangeCipherSpec message");
             }
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {

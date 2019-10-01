@@ -22,7 +22,6 @@
  */
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -125,14 +124,6 @@ public class ReplToolTesting {
 
     public void setCommandInput(String s) {
         cmdin.setInput(s);
-    }
-
-    public void closeCommandInput() {
-        try {
-            cmdin.close();
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
-        }
     }
 
     public final static Pattern idPattern = Pattern.compile("^\\s+(\\d+)");
@@ -764,8 +755,6 @@ public class ReplToolTesting {
 
     class WaitingTestingInputStream extends TestingInputStream {
 
-        private boolean closed;
-
         @Override
         synchronized void setInput(String s) {
             super.setInput(s);
@@ -775,7 +764,7 @@ public class ReplToolTesting {
         synchronized void waitForInput() {
             boolean interrupted = false;
             try {
-                while (available() == 0 && !closed) {
+                while (available() == 0) {
                     try {
                         wait();
                     } catch (InterruptedException e) {
@@ -800,12 +789,6 @@ public class ReplToolTesting {
         public int read(byte b[], int off, int len) {
             waitForInput();
             return super.read(b, off, len);
-        }
-
-        @Override
-        public synchronized void close() throws IOException {
-            closed = true;
-            notify();
         }
     }
 

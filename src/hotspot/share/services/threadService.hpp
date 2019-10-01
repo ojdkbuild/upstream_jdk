@@ -213,15 +213,12 @@ private:
   ThreadConcurrentLocks* _concurrent_locks;
   ThreadSnapshot*        _next;
 
-  // ThreadSnapshot instances should only be created via
-  // ThreadDumpResult::add_thread_snapshot.
-  friend class ThreadDumpResult;
+public:
+  // Dummy snapshot
   ThreadSnapshot() : _thread(NULL), _threadObj(NULL),
                      _blocker_object(NULL), _blocker_object_owner(NULL),
                      _stack_trace(NULL), _concurrent_locks(NULL), _next(NULL) {};
-  void        initialize(ThreadsList * t_list, JavaThread* thread);
-
-public:
+  ThreadSnapshot(ThreadsList * t_list, JavaThread* thread);
   ~ThreadSnapshot();
 
   java_lang_Thread::ThreadStatus thread_status() { return _thread_status; }
@@ -370,16 +367,12 @@ class ThreadDumpResult : public StackObj {
   ThreadsListSetter    _setter;  // Helper to set hazard ptr in the originating thread
                                  // which protects the JavaThreads in _snapshots.
 
-  void                 link_thread_snapshot(ThreadSnapshot* ts);
-
  public:
   ThreadDumpResult();
   ThreadDumpResult(int num_threads);
   ~ThreadDumpResult();
 
-  ThreadSnapshot*      add_thread_snapshot();
-  ThreadSnapshot*      add_thread_snapshot(JavaThread* thread);
-
+  void                 add_thread_snapshot(ThreadSnapshot* ts);
   void                 set_next(ThreadDumpResult* next) { _next = next; }
   ThreadDumpResult*    next()                           { return _next; }
   int                  num_threads()                    { return _num_threads; }

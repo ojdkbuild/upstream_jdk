@@ -153,7 +153,8 @@ final class CertSignAlgsExtension {
             try {
                 spec = new SignatureSchemesSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -296,7 +297,8 @@ final class CertSignAlgsExtension {
             try {
                 spec = new SignatureSchemesSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.

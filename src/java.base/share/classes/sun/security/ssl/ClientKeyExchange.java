@@ -68,8 +68,9 @@ final class ClientKeyExchange {
             }
 
             // not consumer defined.
-            throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Unexpected ClientKeyExchange handshake message.");
+            return null;    // make the compiler happe
         }
     }
 
@@ -104,7 +105,7 @@ final class ClientKeyExchange {
             }
 
             // not consumer defined.
-            throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Unexpected ClientKeyExchange handshake message.");
         }
     }

@@ -201,7 +201,8 @@ final class PskKeyExchangeModesExtension {
             try {
                 spec = new PskKeyExchangeModesSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -323,7 +324,7 @@ final class PskKeyExchangeModesExtension {
             SSLExtensionSpec spec =
                 shc.handshakeExtensions.get(SSLExtension.CH_PRE_SHARED_KEY);
             if (spec != null) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "pre_shared_key key extension is offered " +
                         "without a psk_key_exchange_modes extension");
             }

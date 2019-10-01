@@ -53,29 +53,29 @@ ICRefillVerifier::ICRefillVerifier()
     _refill_remembered(false)
 {
   Thread* thread = Thread::current();
-  assert(thread->missed_ic_stub_refill_verifier() == NULL, "nesting not supported");
-  thread->set_missed_ic_stub_refill_verifier(this);
+  assert(thread->missed_ic_stub_refill_mark() == NULL, "nesting not supported");
+  thread->set_missed_ic_stub_refill_mark(this);
 }
 
 ICRefillVerifier::~ICRefillVerifier() {
   assert(!_refill_requested || _refill_remembered,
          "Forgot to refill IC stubs after failed IC transition");
-  Thread::current()->set_missed_ic_stub_refill_verifier(NULL);
+  Thread::current()->set_missed_ic_stub_refill_mark(NULL);
 }
 
 ICRefillVerifierMark::ICRefillVerifierMark(ICRefillVerifier* verifier) {
   Thread* thread = Thread::current();
-  assert(thread->missed_ic_stub_refill_verifier() == NULL, "nesting not supported");
-  thread->set_missed_ic_stub_refill_verifier(verifier);
+  assert(thread->missed_ic_stub_refill_mark() == NULL, "nesting not supported");
+  thread->set_missed_ic_stub_refill_mark(this);
 }
 
 ICRefillVerifierMark::~ICRefillVerifierMark() {
-  Thread::current()->set_missed_ic_stub_refill_verifier(NULL);
+  Thread::current()->set_missed_ic_stub_refill_mark(NULL);
 }
 
 static ICRefillVerifier* current_ic_refill_verifier() {
   Thread* current = Thread::current();
-  ICRefillVerifier* verifier = current->missed_ic_stub_refill_verifier();
+  ICRefillVerifier* verifier = reinterpret_cast<ICRefillVerifier*>(current->missed_ic_stub_refill_mark());
   assert(verifier != NULL, "need a verifier for safety");
   return verifier;
 }

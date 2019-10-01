@@ -1995,10 +1995,7 @@ bool PSParallelCompact::absorb_live_data_from_eden(PSAdaptiveSizePolicy* size_po
   assert(young_gen->virtual_space()->alignment() ==
          old_gen->virtual_space()->alignment(), "alignments do not match");
 
-  // We also return false when it's a heterogenous heap because old generation cannot absorb data from eden
-  // when it is allocated on different memory (example, nv-dimm) than young.
-  if (!(UseAdaptiveSizePolicy && UseAdaptiveGCBoundary) ||
-      ParallelScavengeHeap::heap()->ps_collector_policy()->is_hetero_heap()) {
+  if (!(UseAdaptiveSizePolicy && UseAdaptiveGCBoundary)) {
     return false;
   }
 

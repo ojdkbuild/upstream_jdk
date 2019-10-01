@@ -59,7 +59,6 @@ import jdk.internal.misc.Signal.Handler;
 import jdk.internal.org.jline.keymap.KeyMap;
 import jdk.internal.org.jline.reader.Binding;
 import jdk.internal.org.jline.reader.EOFError;
-import jdk.internal.org.jline.reader.EndOfFileException;
 import jdk.internal.org.jline.reader.History;
 import jdk.internal.org.jline.reader.LineReader;
 import jdk.internal.org.jline.reader.LineReader.Option;
@@ -185,7 +184,7 @@ class ConsoleIOContext extends IOContext {
             it.set(current);
         }
 
-        historyLoad = Instant.MIN;
+        historyLoad = Instant.now();
         loadHistory.forEach(line -> reader.getHistory().add(historyLoad, line));
 
         in = reader;
@@ -201,8 +200,6 @@ class ConsoleIOContext extends IOContext {
             return in.readLine(firstLinePrompt);
         } catch (UserInterruptException ex) {
             throw (InputInterruptedException) new InputInterruptedException().initCause(ex);
-        } catch (EndOfFileException ex) {
-            return null;
         }
     }
 
@@ -1215,7 +1212,6 @@ class ConsoleIOContext extends IOContext {
                     while ((r = input.read()) != (-1)) {
                         processInputByte(r);
                     }
-                    slaveInput.close();
                 } catch (IOException ex) {
                     throw new IllegalStateException(ex);
                 }

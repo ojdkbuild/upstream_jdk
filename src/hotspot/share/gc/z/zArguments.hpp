@@ -29,9 +29,6 @@
 class CollectedHeap;
 
 class ZArguments : public GCArguments {
-private:
-  void initialize_platform();
-
 public:
   virtual void initialize();
   virtual size_t conservative_max_heap_alignment();

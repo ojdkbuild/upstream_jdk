@@ -402,7 +402,7 @@ public final class SSLSocketImpl
                     readHandshakeRecord();
                 }
             } catch (IOException ioe) {
-                throw conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "Couldn't kickstart handshaking", ioe);
             } catch (Exception oe) {    // including RuntimeException
                 handleException(oe);
@@ -608,12 +608,7 @@ public final class SSLSocketImpl
             }
         } else {
             if (!conContext.isInboundClosed()) {
-                try (conContext.inputRecord) {
-                    // Try the best to use up the input records and close the
-                    // socket gracefully, without impact the performance too
-                    // much.
-                    appInput.deplete();
-                }
+                conContext.inputRecord.close();
             }
 
             if ((autoClose || !isLayered()) && !super.isInputShutdown()) {
@@ -647,7 +642,7 @@ public final class SSLSocketImpl
         if (checkCloseNotify && !conContext.isInputCloseNotified &&
             (conContext.isNegotiated || conContext.handshakeContext != null)) {
 
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                     "closing inbound before receiving peer's close_notify");
         }
 
@@ -912,30 +907,6 @@ public final class SSLSocketImpl
 
             return false;
         }
-
-        /**
-         * Try the best to use up the input records so as to close the
-         * socket gracefully, without impact the performance too much.
-         */
-        private synchronized void deplete() {
-            if (!conContext.isInboundClosed()) {
-                if (!(conContext.inputRecord instanceof SSLSocketInputRecord)) {
-                    return;
-                }
-
-                SSLSocketInputRecord socketInputRecord =
-                        (SSLSocketInputRecord)conContext.inputRecord;
-                try {
-                    socketInputRecord.deplete(
-                        conContext.isNegotiated && (getSoTimeout() > 0));
-                } catch (IOException ioe) {
-                    if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
-                        SSLLogger.warning(
-                            "input stream close depletion failed", ioe);
-                    }
-                }
-            }
-        }
     }
 
     @Override
@@ -1011,9 +982,9 @@ public final class SSLSocketImpl
                 conContext.outputRecord.deliver(b, off, len);
             } catch (SSLHandshakeException she) {
                 // may be record sequence number overflow
-                throw conContext.fatal(Alert.HANDSHAKE_FAILURE, she);
+                conContext.fatal(Alert.HANDSHAKE_FAILURE, she);
             } catch (IOException e) {
-                throw conContext.fatal(Alert.UNEXPECTED_MESSAGE, e);
+                conContext.fatal(Alert.UNEXPECTED_MESSAGE, e);
             }
 
             // Is the sequence number is nearly overflow, or has the key usage
@@ -1338,8 +1309,7 @@ public final class SSLSocketImpl
                 alert = Alert.INTERNAL_ERROR;
             }
         }
-
-        throw conContext.fatal(alert, cause);
+        conContext.fatal(alert, cause);
     }
 
     private Plaintext handleEOF(EOFException eofe) throws IOException {

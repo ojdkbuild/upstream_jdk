@@ -33,7 +33,8 @@ import java.net.URL;
  * credentials without prompting) should only be tried with trusted sites.
  */
 public abstract class NTLMAuthenticationCallback {
-    private static volatile NTLMAuthenticationCallback callback;
+    private static volatile NTLMAuthenticationCallback callback =
+            new DefaultNTLMAuthenticationCallback();
 
     public static void setNTLMAuthenticationCallback(
             NTLMAuthenticationCallback callback) {
@@ -49,5 +50,10 @@ public abstract class NTLMAuthenticationCallback {
      * transparent Authentication.
      */
     public abstract boolean isTrustedSite(URL url);
+
+    static class DefaultNTLMAuthenticationCallback extends NTLMAuthenticationCallback {
+        @Override
+        public boolean isTrustedSite(URL url) { return true; }
+    }
 }
 

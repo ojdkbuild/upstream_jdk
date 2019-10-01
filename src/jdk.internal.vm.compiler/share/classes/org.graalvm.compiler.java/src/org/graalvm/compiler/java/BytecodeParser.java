@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1106,11 +1106,7 @@ public class BytecodeParser implements GraphBuilderContext {
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
-    /**
-     * @return the entry point to exception dispatch
-     */
     private AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
-        FixedWithNextNode currentLastInstr = lastInstr;
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
@@ -1130,25 +1126,18 @@ public class BytecodeParser implements GraphBuilderContext {
             dispatchState.setRethrowException(true);
         }
         this.controlFlowSplit = true;
-        FixedWithNextNode afterExceptionLoaded = finishInstruction(dispatchBegin, dispatchState);
+        FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
 
         if (deoptimizeOnly) {
             DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
-            afterExceptionLoaded.setNext(BeginNode.begin(deoptimizeNode));
+            dispatchBegin.setNext(BeginNode.begin(deoptimizeNode));
         } else {
-            createHandleExceptionTarget(afterExceptionLoaded, bci, dispatchState);
+            createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
         }
-        assert currentLastInstr == lastInstr;
         return dispatchBegin;
     }
 
-    protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
-        FixedWithNextNode afterInstrumentation = afterExceptionLoaded;
-        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
-            afterInstrumentation = plugin.instrumentExceptionDispatch(graph, afterInstrumentation);
-            assert afterInstrumentation.next() == null : "exception dispatch instrumentation will be linked to dispatch block";
-        }
-
+    protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
         BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
         /*
          * The exception dispatch block is always for the last bytecode of a block, so if we are not
@@ -1160,7 +1149,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         FixedNode target = createTarget(dispatchBlock, dispatchState);
-        afterInstrumentation.setNext(target);
+        finishedDispatch.setNext(target);
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, GuardingNode boundsCheck, JavaKind kind) {
@@ -4206,6 +4195,7 @@ public class BytecodeParser implements GraphBuilderContext {
             handleIllegalNewInstance(resolvedType);
             return;
         }
+
         maybeEagerlyInitialize(resolvedType);
 
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
@@ -4519,6 +4509,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
+        maybeEagerlyInitialize(holder);
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
             classInitializationPlugin.apply(this, holder, this::createCurrentFrameState);
@@ -4554,20 +4545,16 @@ public class BytecodeParser implements GraphBuilderContext {
     private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-            ResolvedJavaType resolvedType = resolvedField.getDeclaringClass();
-            maybeEagerlyInitialize(resolvedType);
-
-            if (resolvedType.isInitialized() || graphBuilderConfig.getPlugins().getClassInitializationPlugin() != null) {
+            if (resolvedField.getDeclaringClass().isInitialized() || graphBuilderConfig.getPlugins().getClassInitializationPlugin() != null) {
                 return resolvedField;
             }
-
             /*
              * Static fields have initialization semantics but may be safely accessed under certain
              * conditions while the class is being initialized. Executing in the clinit or init of
-             * subclasses (but not implementers) of the field holder are sure to be running in a
-             * context where the access is safe.
+             * classes which are subtypes of the field holder are sure to be running in a context
+             * where the access is safe.
              */
-            if (!resolvedType.isInterface() && resolvedType.isAssignableFrom(method.getDeclaringClass())) {
+            if (resolvedField.getDeclaringClass().isAssignableFrom(method.getDeclaringClass())) {
                 if (method.isClassInitializer() || method.isConstructor()) {
                     return resolvedField;
                 }
@@ -4601,6 +4588,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
+        maybeEagerlyInitialize(holder);
         if (classInitializationPlugin != null) {
             Supplier<FrameState> stateBefore = () -> {
                 JavaKind[] pushedSlotKinds = {field.getJavaKind()};

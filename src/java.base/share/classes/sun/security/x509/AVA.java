@@ -1045,7 +1045,7 @@ public class AVA implements DerEncoder {
 
             if (valStr == null) {
 
-                // RFC 1779 specifies that attribute values associated
+                // rfc1779 specifies that attribute values associated
                 // with non-standard keyword attributes may be represented
                 // using the hex format below.  This will be used only
                 // when the value is not a string type

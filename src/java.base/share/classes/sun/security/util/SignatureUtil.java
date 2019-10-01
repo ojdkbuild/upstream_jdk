@@ -28,6 +28,8 @@ package sun.security.util;
 import java.io.IOException;
 import java.security.*;
 import java.security.spec.*;
+import sun.security.util.ObjectIdentifier;
+import sun.security.x509.AlgorithmId;
 import sun.security.rsa.RSAUtil;
 
 /**
@@ -84,12 +86,13 @@ public class SignatureUtil {
     // specified Signature object as signature parameters.
     public static void specialSetParameter(Signature sig, byte[] paramBytes)
             throws InvalidAlgorithmParameterException, ProviderException {
+
+        AlgorithmParameters params = null;
         if (paramBytes != null) {
             String sigName = sig.getAlgorithm();
-            AlgorithmParameters params =
-                createAlgorithmParameters(sigName, paramBytes);
-            specialSetParameter(sig, params);
+            params = createAlgorithmParameters(sigName, paramBytes);
         }
+        specialSetParameter(sig, params);
     }
 
     // Special method for setting the specified AlgorithmParameter object
@@ -97,9 +100,16 @@ public class SignatureUtil {
     public static void specialSetParameter(Signature sig,
             AlgorithmParameters params)
             throws InvalidAlgorithmParameterException, ProviderException {
+
+        String sigName = sig.getAlgorithm();
         if (params != null) {
-            String sigName = sig.getAlgorithm();
             sig.setParameter(getParamSpec(sigName, params));
+        } else {
+            try {
+                sig.setParameter(null);
+            } catch (UnsupportedOperationException e) {
+                // ignore for maintaining backward compatibility
+            }
         }
     }
 }

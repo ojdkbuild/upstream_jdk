@@ -174,8 +174,7 @@ final class AlpnExtension {
                         SSLLogger.severe(
                                 "Application protocol name cannot be empty");
                     }
-
-                    throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                    chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                             "Application protocol name cannot be empty");
                 }
 
@@ -190,8 +189,7 @@ final class AlpnExtension {
                                 ") exceeds the size limit (" +
                                 MAX_AP_LENGTH + " bytes)");
                     }
-
-                    throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                    chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                                 "Application protocol name (" + ap +
                                 ") exceeds the size limit (" +
                                 MAX_AP_LENGTH + " bytes)");
@@ -206,8 +204,7 @@ final class AlpnExtension {
                                 ") exceed the size limit (" +
                                 MAX_AP_LIST_LENGTH + " bytes)");
                     }
-
-                    throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                    chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                                 "The configured application protocols (" +
                                 Arrays.toString(laps) +
                                 ") exceed the size limit (" +
@@ -286,7 +283,8 @@ final class AlpnExtension {
             try {
                 spec = new AlpnSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -304,7 +302,7 @@ final class AlpnExtension {
                 }
 
                 if (!matched) {
-                    throw shc.conContext.fatal(Alert.NO_APPLICATION_PROTOCOL,
+                    shc.conContext.fatal(Alert.NO_APPLICATION_PROTOCOL,
                             "No matching application layer protocol values");
                 }
             }   // Otherwise, applicationProtocol will be set by the
@@ -381,8 +379,7 @@ final class AlpnExtension {
                     if ((shc.applicationProtocol == null) ||
                             (!shc.applicationProtocol.isEmpty() &&
                             !alps.contains(shc.applicationProtocol))) {
-                        throw shc.conContext.fatal(
-                            Alert.NO_APPLICATION_PROTOCOL,
+                        shc.conContext.fatal(Alert.NO_APPLICATION_PROTOCOL,
                             "No matching application layer protocol values");
                     }
                 }
@@ -394,8 +391,7 @@ final class AlpnExtension {
                     if ((shc.applicationProtocol == null) ||
                             (!shc.applicationProtocol.isEmpty() &&
                             !alps.contains(shc.applicationProtocol))) {
-                        throw shc.conContext.fatal(
-                            Alert.NO_APPLICATION_PROTOCOL,
+                        shc.conContext.fatal(Alert.NO_APPLICATION_PROTOCOL,
                             "No matching application layer protocol values");
                     }
                 }
@@ -458,7 +454,7 @@ final class AlpnExtension {
             if (requestedAlps == null ||
                     requestedAlps.applicationProtocols == null ||
                     requestedAlps.applicationProtocols.isEmpty()) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected " + SSLExtension.CH_ALPN.name + " extension");
             }
 
@@ -467,12 +463,13 @@ final class AlpnExtension {
             try {
                 spec = new AlpnSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Only one application protocol is allowed.
             if (spec.applicationProtocols.size() != 1) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid " + SSLExtension.CH_ALPN.name + " extension: " +
                     "Only one application protocol name " +
                     "is allowed in ServerHello message");
@@ -481,7 +478,7 @@ final class AlpnExtension {
             // The respond application protocol must be one of the requested.
             if (!requestedAlps.applicationProtocols.containsAll(
                     spec.applicationProtocols)) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid " + SSLExtension.CH_ALPN.name + " extension: " +
                     "Only client specified application protocol " +
                     "is allowed in ServerHello message");

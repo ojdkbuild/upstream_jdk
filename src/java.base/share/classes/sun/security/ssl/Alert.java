@@ -122,17 +122,11 @@ enum Alert {
             reason = (cause != null) ? cause.getMessage() : "";
         }
 
-        SSLException ssle;
-        if ((cause != null) && (cause instanceof IOException)) {
-            ssle = new SSLException(reason);
-        } else if ((this == UNEXPECTED_MESSAGE)) {
-            ssle = new SSLProtocolException(reason);
-        } else if (handshakeOnly) {
-            ssle = new SSLHandshakeException(reason);
-        } else {
-            ssle = new SSLException(reason);
-        }
-
+        SSLException ssle = (this == UNEXPECTED_MESSAGE) ?
+                new SSLProtocolException(reason) :
+                (handshakeOnly ?
+                        new SSLHandshakeException(reason) :
+                        new SSLException(reason));
         if (cause != null) {
             ssle.initCause(cause);
         }
@@ -193,7 +187,7 @@ enum Alert {
             //      AlertDescription description;
             //  } Alert;
             if (m.remaining() != 2) {
-                throw context.fatal(Alert.ILLEGAL_PARAMETER,
+                context.fatal(Alert.ILLEGAL_PARAMETER,
                     "Invalid Alert message: no sufficient data");
             }
 
@@ -247,14 +241,14 @@ enum Alert {
                 if (tc.peerUserCanceled) {
                     tc.closeOutbound();
                 } else if (tc.handshakeContext != null) {
-                    throw tc.fatal(Alert.UNEXPECTED_MESSAGE,
+                    tc.fatal(Alert.UNEXPECTED_MESSAGE,
                             "Received close_notify during handshake");
                 }
             } else if (alert == Alert.USER_CANCELED) {
                 if (level == Level.WARNING) {
                     tc.peerUserCanceled = true;
                 } else {
-                    throw tc.fatal(alert,
+                    tc.fatal(alert,
                             "Received fatal close_notify alert", true, null);
                 }
             } else if ((level == Level.WARNING) && (alert != null)) {
@@ -269,7 +263,7 @@ enum Alert {
                             alert != Alert.NO_CERTIFICATE ||
                             (tc.sslConfig.clientAuthType !=
                                     ClientAuthType.CLIENT_AUTH_REQUESTED)) {
-                        throw tc.fatal(Alert.HANDSHAKE_FAILURE,
+                        tc.fatal(Alert.HANDSHAKE_FAILURE,
                             "received handshake warning: " + alert.description);
                     }  // Otherwise, ignore the warning
                 }   // Otherwise, ignore the warning.
@@ -282,7 +276,7 @@ enum Alert {
                     diagnostic = "Received fatal alert: " + alert.description;
                 }
 
-                throw tc.fatal(alert, diagnostic, true, null);
+                tc.fatal(alert, diagnostic, true, null);
             }
         }
     }

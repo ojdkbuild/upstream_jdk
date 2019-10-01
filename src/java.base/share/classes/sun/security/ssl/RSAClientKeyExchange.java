@@ -75,7 +75,7 @@ final class RSAClientKeyExchange {
             super(context);
 
             if (m.remaining() < 2) {
-                throw context.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                context.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "Invalid RSA ClientKeyExchange message: insufficient data");
             }
 
@@ -167,14 +167,14 @@ final class RSAClientKeyExchange {
             }
 
             if (rsaCredentials == null && x509Credentials == null) {
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "No RSA credentials negotiated for client key exchange");
             }
 
             PublicKey publicKey = (rsaCredentials != null) ?
                     rsaCredentials.popPublicKey : x509Credentials.popPublicKey;
             if (!publicKey.getAlgorithm().equals("RSA")) {      // unlikely
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Not RSA public key for client key exchange");
             }
 
@@ -186,8 +186,10 @@ final class RSAClientKeyExchange {
                 ckem = new RSAClientKeyExchangeMessage(
                         chc, premaster, publicKey);
             } catch (GeneralSecurityException gse) {
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                         "Cannot generate RSA premaster secret", gse);
+
+                return null;    // make the compiler happy
             }
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine(
@@ -203,7 +205,7 @@ final class RSAClientKeyExchange {
                     chc.negotiatedCipherSuite.keyExchange,
                     chc.negotiatedProtocol);
             if (ke == null) {   // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key exchange type");
             } else {
                 SSLKeyDerivation masterKD = ke.createKeyDerivation(chc);
@@ -215,7 +217,7 @@ final class RSAClientKeyExchange {
                 SSLTrafficKeyDerivation kd =
                         SSLTrafficKeyDerivation.valueOf(chc.negotiatedProtocol);
                 if (kd == null) {   // unlikely
-                    throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    chc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Not supported key derivation: " +
                             chc.negotiatedProtocol);
                 } else {
@@ -260,14 +262,14 @@ final class RSAClientKeyExchange {
             }
 
             if (rsaPossession == null && x509Possession == null) {  // unlikely
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "No RSA possessions negotiated for client key exchange");
             }
 
             PrivateKey privateKey = (rsaPossession != null) ?
                     rsaPossession.popPrivateKey : x509Possession.popPrivateKey;
             if (!privateKey.getAlgorithm().equals("RSA")) {     // unlikely
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Not RSA private key for client key exchange");
             }
 
@@ -285,7 +287,7 @@ final class RSAClientKeyExchange {
                     RSAPremasterSecret.decode(shc, privateKey, ckem.encrypted);
                 shc.handshakeCredentials.add(premaster);
             } catch (GeneralSecurityException gse) {
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Cannot decode RSA premaster secret", gse);
             }
 
@@ -294,7 +296,7 @@ final class RSAClientKeyExchange {
                     shc.negotiatedCipherSuite.keyExchange,
                     shc.negotiatedProtocol);
             if (ke == null) {   // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key exchange type");
             } else {
                 SSLKeyDerivation masterKD = ke.createKeyDerivation(shc);
@@ -306,7 +308,7 @@ final class RSAClientKeyExchange {
                 SSLTrafficKeyDerivation kd =
                         SSLTrafficKeyDerivation.valueOf(shc.negotiatedProtocol);
                 if (kd == null) {       // unlikely
-                    throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    shc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Not supported key derivation: " +
                             shc.negotiatedProtocol);
                 } else {

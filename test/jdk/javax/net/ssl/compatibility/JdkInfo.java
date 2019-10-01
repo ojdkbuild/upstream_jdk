@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,7 @@ public class JdkInfo {
     public final String jdkPath;
 
     public final String version;
-    public final String supportedProtocols;
-    public final String supportedCipherSuites;
+    public final boolean supportsECKey;
     public final boolean supportsSNI;
     public final boolean supportsALPN;
 
@@ -47,10 +46,9 @@ public class JdkInfo {
 
         String[] attributes = Utils.split(output, Utils.PARAM_DELIMITER);
         version = attributes[0].replaceAll(".*=", "");
-        supportedProtocols = attributes[1].replaceAll(".*=", "");
-        supportedCipherSuites = attributes[2].replaceAll(".*=", "");
-        supportsSNI = Boolean.valueOf(attributes[3].replaceAll(".*=", ""));
-        supportsALPN = Boolean.valueOf(attributes[4].replaceAll(".*=", ""));
+        supportsECKey = Boolean.valueOf(attributes[1].replaceAll(".*=", ""));
+        supportsSNI = Boolean.valueOf(attributes[2].replaceAll(".*=", ""));
+        supportsALPN = Boolean.valueOf(attributes[3].replaceAll(".*=", ""));
     }
 
     // Determines the specific attributes for the specified JDK.
@@ -85,11 +83,10 @@ public class JdkInfo {
         return true;
     }
 
-    public boolean supportsProtocol(Protocol protocol) {
-        return supportedProtocols.contains(protocol.name);
-    }
-
     public boolean supportsCipherSuite(CipherSuite cipherSuite) {
-        return supportedCipherSuites.contains(cipherSuite.name());
+        JdkRelease jdkRelease = JdkRelease.getRelease(version);
+        return cipherSuite.startJdk.sequence <= jdkRelease.sequence
+                && (cipherSuite.endJdk == null
+                        || cipherSuite.endJdk.sequence >= jdkRelease.sequence);
     }
 }

@@ -399,16 +399,15 @@ void CompiledMethod::clear_inline_caches() {
   }
 }
 
-// Clear IC callsites, releasing ICStubs of all compiled ICs
-// as well as any associated CompiledICHolders.
-void CompiledMethod::clear_ic_callsites() {
+// Clear ICStubs of all compiled ICs
+void CompiledMethod::clear_ic_stubs() {
   assert(CompiledICLocker::is_safe(this), "mt unsafe call");
   ResourceMark rm;
   RelocIterator iter(this);
   while(iter.next()) {
     if (iter.type() == relocInfo::virtual_call_type) {
       CompiledIC* ic = CompiledIC_at(&iter);
-      ic->set_to_clean(false);
+      ic->clear_ic_stub();
     }
   }
 }

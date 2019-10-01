@@ -106,7 +106,7 @@ final class DHServerKeyExchange {
 
             if (dhePossession == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "No DHE credentials negotiated for server key exchange");
             }
             DHPublicKey publicKey = dhePossession.publicKey;
@@ -132,7 +132,7 @@ final class DHServerKeyExchange {
                     if (signatureScheme == null) {
                         // Unlikely, the credentials generator should have
                         // selected the preferable signature algorithm properly.
-                        throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                        shc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "No preferred signature algorithm");
                     }
                     try {
@@ -140,7 +140,7 @@ final class DHServerKeyExchange {
                                 x509Possession.popPrivateKey);
                     } catch (NoSuchAlgorithmException | InvalidKeyException |
                             InvalidAlgorithmParameterException nsae) {
-                        throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                        shc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Unsupported signature algorithm: " +
                             signatureScheme.name, nsae);
                     }
@@ -151,7 +151,7 @@ final class DHServerKeyExchange {
                                 x509Possession.popPrivateKey.getAlgorithm(),
                                 x509Possession.popPrivateKey);
                     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-                        throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                        shc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Unsupported signature algorithm: " +
                             x509Possession.popPrivateKey.getAlgorithm(), e);
                     }
@@ -163,7 +163,7 @@ final class DHServerKeyExchange {
                             shc.serverHelloRandom.randomBytes);
                     signature = signer.sign();
                 } catch (SignatureException ex) {
-                    throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Failed to sign dhe parameters: " +
                         x509Possession.popPrivateKey.getAlgorithm(), ex);
                 }
@@ -189,7 +189,7 @@ final class DHServerKeyExchange {
                         new BigInteger(1, p),
                         new BigInteger(1, p)));
             } catch (InvalidKeyException ike) {
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "Invalid DH ServerKeyExchange: invalid parameters", ike);
             }
 
@@ -204,7 +204,7 @@ final class DHServerKeyExchange {
             if (x509Credentials == null) {
                 // anonymous, no authentication, no signature
                 if (m.hasRemaining()) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid DH ServerKeyExchange: unknown extra data");
                 }
 
@@ -221,13 +221,13 @@ final class DHServerKeyExchange {
                 int ssid = Record.getInt16(m);
                 signatureScheme = SignatureScheme.valueOf(ssid);
                 if (signatureScheme == null) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "Invalid signature algorithm (" + ssid +
                             ") used in DH ServerKeyExchange handshake message");
                 }
 
                 if (!chc.localSupportedSignAlgs.contains(signatureScheme)) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "Unsupported signature algorithm (" +
                             signatureScheme.name +
                             ") used in DH ServerKeyExchange handshake message");
@@ -245,9 +245,11 @@ final class DHServerKeyExchange {
                             x509Credentials.popPublicKey);
                 } catch (NoSuchAlgorithmException | InvalidKeyException |
                         InvalidAlgorithmParameterException nsae) {
-                    throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    chc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Unsupported signature algorithm: " +
                             signatureScheme.name, nsae);
+
+                    return;     // make the compiler happe
                 }
             } else {
                 try {
@@ -255,9 +257,11 @@ final class DHServerKeyExchange {
                             x509Credentials.popPublicKey.getAlgorithm(),
                             x509Credentials.popPublicKey);
                 } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-                    throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    chc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Unsupported signature algorithm: " +
                             x509Credentials.popPublicKey.getAlgorithm(), e);
+
+                    return;     // make the compiler happe
                 }
             }
 
@@ -267,11 +271,11 @@ final class DHServerKeyExchange {
                         chc.serverHelloRandom.randomBytes);
 
                 if (!signer.verify(paramsSignature)) {
-                    throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Invalid signature on DH ServerKeyExchange message");
                 }
             } catch (SignatureException ex) {
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Cannot verify DH ServerKeyExchange signature", ex);
             }
         }
@@ -531,13 +535,15 @@ final class DHServerKeyExchange {
                         new BigInteger(1, skem.g));
                 publicKey = (DHPublicKey)kf.generatePublic(spec);
             } catch (GeneralSecurityException gse) {
-                throw chc.conContext.fatal(Alert.INSUFFICIENT_SECURITY,
+                chc.conContext.fatal(Alert.INSUFFICIENT_SECURITY,
                     "Could not generate DHPublicKey", gse);
+
+                return;     // make the compiler happy
             }
 
             if (!chc.algorithmConstraints.permits(
                     EnumSet.of(CryptoPrimitive.KEY_AGREEMENT), publicKey)) {
-                throw chc.conContext.fatal(Alert.INSUFFICIENT_SECURITY,
+                chc.conContext.fatal(Alert.INSUFFICIENT_SECURITY,
                         "DH ServerKeyExchange does not comply to " +
                         "algorithm constraints");
             }

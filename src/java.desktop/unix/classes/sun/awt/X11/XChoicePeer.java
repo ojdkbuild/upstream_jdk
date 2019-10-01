@@ -468,7 +468,6 @@ public final class XChoicePeer extends XComponentPeer implements ChoicePeer, Top
                     if (unfurledChoice.isMouseInListArea(e)) {
                         int newIdx = helper.getSelectedIndex();
                         if (newIdx >= 0) {
-                            int currentItem = ((Choice)target).getSelectedIndex();
                             // Update the selected item in the target now that
                             // the mouse selection is complete.
                             if (newIdx != dragStartIdx) {
@@ -485,7 +484,7 @@ public final class XChoicePeer extends XComponentPeer implements ChoicePeer, Top
                             * LeftMouseButton used */
                             if (e.getButton() == MouseEvent.BUTTON1 &&
                                 (!firstPress || wasDragged ) &&
-                                (newIdx != currentItem))
+                                ((Choice)target).getSelectedIndex() != newIdx)
                             {
                                 ((Choice)target).select(newIdx);
                                 postEvent(new ItemEvent((Choice)target,

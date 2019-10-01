@@ -295,7 +295,8 @@ final class ServerNameExtension {
             try {
                 spec = new CHServerNamesSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -313,7 +314,7 @@ final class ServerNameExtension {
                     }
                 } else {
                     // We do not reject client without SNI extension currently.
-                    throw shc.conContext.fatal(Alert.UNRECOGNIZED_NAME,
+                    shc.conContext.fatal(Alert.UNRECOGNIZED_NAME,
                             "Unrecognized server name indication");
                 }
             } else {
@@ -482,13 +483,13 @@ final class ServerNameExtension {
             CHServerNamesSpec spec = (CHServerNamesSpec)
                     chc.handshakeExtensions.get(CH_SERVER_NAME);
             if (spec == null) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected ServerHello server_name extension");
             }
 
             // Parse the extension.
             if (buffer.remaining() != 0) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid ServerHello server_name extension");
             }
 
@@ -569,13 +570,13 @@ final class ServerNameExtension {
             CHServerNamesSpec spec = (CHServerNamesSpec)
                     chc.handshakeExtensions.get(CH_SERVER_NAME);
             if (spec == null) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected EncryptedExtensions server_name extension");
             }
 
             // Parse the extension.
             if (buffer.remaining() != 0) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid EncryptedExtensions server_name extension");
             }
 

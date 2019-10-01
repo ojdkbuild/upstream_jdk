@@ -100,14 +100,11 @@ public final class AnnotatedTypeFactory {
             if (clz.getEnclosingClass() == null)
                 return addTo;
             if (Modifier.isStatic(clz.getModifiers()))
-                return addTo;
+                return nestingForType(clz.getEnclosingClass(), addTo);
             return nestingForType(clz.getEnclosingClass(), addTo.pushInner());
         } else if (type instanceof ParameterizedType) {
             ParameterizedType t = (ParameterizedType)type;
             if (t.getOwnerType() == null)
-                return addTo;
-            if (t.getRawType() instanceof Class
-                    && Modifier.isStatic(((Class) t.getRawType()).getModifiers()))
                 return addTo;
             return nestingForType(t.getOwnerType(), addTo.pushInner());
         }
@@ -196,18 +193,14 @@ public final class AnnotatedTypeFactory {
             if (!(type instanceof Class<?>))
                 throw new IllegalStateException("Can't compute owner");
 
-            Class<?> nested = (Class<?>)type;
-            Class<?> owner = nested.getDeclaringClass();
+            Class<?> inner = (Class<?>)type;
+            Class<?> owner = inner.getDeclaringClass();
             if (owner == null) // top-level, local or anonymous
                 return null;
-            if (nested.isPrimitive() || nested == Void.TYPE)
+            if (inner.isPrimitive() || inner == Void.TYPE)
                 return null;
 
-            LocationInfo outerLoc = getLocation().popLocation((byte)1);
-            if (outerLoc == null) {
-              return buildAnnotatedType(owner, LocationInfo.BASE_LOCATION,
-                      EMPTY_TYPE_ANNOTATION_ARRAY, EMPTY_TYPE_ANNOTATION_ARRAY, getDecl());
-            }
+            LocationInfo outerLoc = nestingForType(owner, getLocation().popAllLocations((byte)1));
             TypeAnnotation[]all = getTypeAnnotations();
             List<TypeAnnotation> l = new ArrayList<>(all.length);
 
@@ -452,12 +445,7 @@ public final class AnnotatedTypeFactory {
             Type owner = getParameterizedType().getOwnerType();
             if (owner == null)
                 return null;
-
-            LocationInfo outerLoc = getLocation().popLocation((byte)1);
-            if (outerLoc == null) {
-              return buildAnnotatedType(owner, LocationInfo.BASE_LOCATION,
-                      EMPTY_TYPE_ANNOTATION_ARRAY, EMPTY_TYPE_ANNOTATION_ARRAY, getDecl());
-            }
+            LocationInfo outerLoc = nestingForType(owner, getLocation().popAllLocations((byte)1));
             TypeAnnotation[]all = getTypeAnnotations();
             List<TypeAnnotation> l = new ArrayList<>(all.length);
 

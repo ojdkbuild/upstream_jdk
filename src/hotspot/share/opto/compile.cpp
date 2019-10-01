@@ -2184,26 +2184,6 @@ bool Compile::optimize_loops(PhaseIterGVN& igvn, LoopOptsMode mode) {
   return true;
 }
 
-// Remove edges from "root" to each SafePoint at a backward branch.
-// They were inserted during parsing (see add_safepoint()) to make
-// infinite loops without calls or exceptions visible to root, i.e.,
-// useful.
-void Compile::remove_root_to_sfpts_edges(PhaseIterGVN& igvn) {
-  Node *r = root();
-  if (r != NULL) {
-    for (uint i = r->req(); i < r->len(); ++i) {
-      Node *n = r->in(i);
-      if (n != NULL && n->is_SafePoint()) {
-        r->rm_prec(i);
-        if (n->outcnt() == 0) {
-          igvn.remove_dead_node(n);
-        }
-        --i;
-      }
-    }
-  }
-}
-
 //------------------------------Optimize---------------------------------------
 // Given a graph, optimize it.
 void Compile::Optimize() {
@@ -2263,10 +2243,6 @@ void Compile::Optimize() {
 
     if (failing())  return;
   }
-
-  // Now that all inlining is over, cut edge from root to loop
-  // safepoints
-  remove_root_to_sfpts_edges(igvn);
 
   // Remove the speculative part of types and clean up the graph from
   // the extra CastPP nodes whose only purpose is to carry them. Do
@@ -3272,10 +3248,8 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
             break;
           }
         }
-        assert(proj != NULL || p->_con == TypeFunc::I_O, "io may be dropped at an infinite loop");
-        if (proj != NULL) {
-          p->subsume_by(proj, this);
-        }
+        assert(proj != NULL, "must be found");
+        p->subsume_by(proj, this);
       }
     }
     break;
@@ -3495,7 +3469,8 @@ void Compile::final_graph_reshaping_main_switch(Node* n, Final_Reshape_Counts& f
   }
   case Op_CmpUL: {
     if (!Matcher::has_match_rule(Op_CmpUL)) {
-      // No support for unsigned long comparisons
+      // We don't support unsigned long comparisons. Set 'max_idx_expr'
+      // to max_julong if < 0 to make the signed comparison fail.
       ConINode* sign_pos = new ConINode(TypeInt::make(BitsPerLong - 1));
       Node* sign_bit_mask = new RShiftLNode(n->in(1), sign_pos);
       Node* orl = new OrLNode(n->in(1), sign_bit_mask);

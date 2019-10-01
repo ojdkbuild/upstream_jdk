@@ -238,7 +238,8 @@ final class SignatureAlgorithmsExtension {
             try {
                 spec = new SignatureSchemesSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // Update the context.
@@ -328,7 +329,7 @@ final class SignatureAlgorithmsExtension {
             // We may support the server authentication other than X.509
             // certificate later.
             if (shc.negotiatedProtocol.useTLS13PlusSpec()) {
-                throw shc.conContext.fatal(Alert.MISSING_EXTENSION,
+                shc.conContext.fatal(Alert.MISSING_EXTENSION,
                     "No mandatory signature_algorithms extension in the " +
                     "received CertificateRequest handshake message");
             }
@@ -402,9 +403,10 @@ final class SignatureAlgorithmsExtension {
             // handshake message in TLS 1.3.
             if (!shc.sslConfig.isAvailable(
                     SSLExtension.CR_SIGNATURE_ALGORITHMS)) {
-                throw shc.conContext.fatal(Alert.MISSING_EXTENSION,
+                shc.conContext.fatal(Alert.MISSING_EXTENSION,
                         "No available signature_algorithms extension " +
                         "for client certificate authentication");
+                return null;    // make the compiler happy
             }
 
             // Produce the extension.
@@ -452,9 +454,10 @@ final class SignatureAlgorithmsExtension {
             // handshake message in TLS 1.3.
             if (!chc.sslConfig.isAvailable(
                     SSLExtension.CR_SIGNATURE_ALGORITHMS)) {
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "No available signature_algorithms extension " +
                         "for client certificate authentication");
+                return;     // make the compiler happy
             }
 
             // Parse the extension.
@@ -462,7 +465,8 @@ final class SignatureAlgorithmsExtension {
             try {
                 spec = new SignatureSchemesSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             List<SignatureScheme> knownSignatureSchemes = new LinkedList<>();
@@ -541,7 +545,7 @@ final class SignatureAlgorithmsExtension {
 
             // This is a mandatory extension for CertificateRequest handshake
             // message in TLS 1.3.
-            throw chc.conContext.fatal(Alert.MISSING_EXTENSION,
+            chc.conContext.fatal(Alert.MISSING_EXTENSION,
                     "No mandatory signature_algorithms extension in the " +
                     "received CertificateRequest handshake message");
         }

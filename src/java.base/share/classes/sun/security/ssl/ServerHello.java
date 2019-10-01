@@ -133,7 +133,7 @@ final class ServerHello {
             this.serverVersion = ProtocolVersion.valueOf(major, minor);
             if (this.serverVersion == null) {
                 // The client should only request for known protocol versions.
-                throw context.conContext.fatal(Alert.PROTOCOL_VERSION,
+                context.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "Unsupported protocol version: " +
                     ProtocolVersion.nameOf(major, minor));
             }
@@ -143,21 +143,20 @@ final class ServerHello {
             try {
                 sessionId.checkLength(serverVersion.id);
             } catch (SSLProtocolException ex) {
-                throw handshakeContext.conContext.fatal(
-                        Alert.ILLEGAL_PARAMETER, ex);
+                handshakeContext.conContext.fatal(Alert.ILLEGAL_PARAMETER, ex);
             }
 
             int cipherSuiteId = Record.getInt16(m);
             this.cipherSuite = CipherSuite.valueOf(cipherSuiteId);
             if (cipherSuite == null || !context.isNegotiable(cipherSuite)) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Server selected improper ciphersuite " +
                     CipherSuite.nameOf(cipherSuiteId));
             }
 
             this.compressionMethod = m.get();
             if (compressionMethod != 0) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "compression type not supported, " + compressionMethod);
             }
 
@@ -294,8 +293,10 @@ final class ServerHello {
                 KeyExchangeProperties credentials =
                         chooseCipherSuite(shc, clientHello);
                 if (credentials == null) {
-                    throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "no cipher suites in common");
+
+                    return null;    // make the compiler happy
                 }
                 shc.negotiatedCipherSuite = credentials.cipherSuite;
                 shc.handshakeKeyExchange = credentials.keyExchange;
@@ -373,7 +374,7 @@ final class ServerHello {
                     SSLTrafficKeyDerivation.valueOf(shc.negotiatedProtocol);
                 if (kdg == null) {
                     // unlikely
-                    throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    shc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Not supported key derivation: " +
                             shc.negotiatedProtocol);
                 } else {
@@ -457,8 +458,10 @@ final class ServerHello {
                 }
             }
 
-            throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+            shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "no cipher suites in common");
+
+            return null;    // make the compiler happy.
         }
 
         private static final class KeyExchangeProperties {
@@ -521,8 +524,9 @@ final class ServerHello {
                 // negotiate the cipher suite.
                 CipherSuite cipherSuite = chooseCipherSuite(shc, clientHello);
                 if (cipherSuite == null) {
-                    throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                             "no cipher suites in common");
+                    return null;    // make the compiler happy
                 }
                 shc.negotiatedCipherSuite = cipherSuite;
                 shc.handshakeSession.setSuite(cipherSuite);
@@ -588,8 +592,9 @@ final class ServerHello {
             SSLKeyExchange ke = shc.handshakeKeyExchange;
             if (ke == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not negotiated key shares");
+                return null;    // make the compiler happy
             }
 
             SSLKeyDerivation handshakeKD = ke.createKeyDerivation(shc);
@@ -600,9 +605,10 @@ final class ServerHello {
                 SSLTrafficKeyDerivation.valueOf(shc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         shc.negotiatedProtocol);
+                return null;    // make the compiler happy
             }
 
             SSLKeyDerivation kd =
@@ -628,15 +634,9 @@ final class ServerHello {
                         shc.sslContext.getSecureRandom());
             } catch (GeneralSecurityException gse) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Missing cipher algorithm", gse);
-            }
-
-            if (readCipher == null) {
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                    "Illegal cipher suite (" + shc.negotiatedCipherSuite +
-                    ") and protocol version (" + shc.negotiatedProtocol +
-                    ")");
+                return null;    // make the compiler happy
             }
 
             shc.baseReadSecret = readSecret;
@@ -662,15 +662,9 @@ final class ServerHello {
                         shc.sslContext.getSecureRandom());
             } catch (GeneralSecurityException gse) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Missing cipher algorithm", gse);
-            }
-
-            if (writeCipher == null) {
-                throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                    "Illegal cipher suite (" + shc.negotiatedCipherSuite +
-                    ") and protocol version (" + shc.negotiatedProtocol +
-                    ")");
+                return null;    //  make the compiler happy
             }
 
             shc.baseWriteSecret = writeSecret;
@@ -752,8 +746,9 @@ final class ServerHello {
             CipherSuite cipherSuite =
                     T13ServerHelloProducer.chooseCipherSuite(shc, clientHello);
             if (cipherSuite == null) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "no cipher suites in common for hello retry request");
+                return null;    // make the compiler happy
             }
 
             ServerHelloMessage hhrm = new ServerHelloMessage(shc,
@@ -862,7 +857,7 @@ final class ServerHello {
                         SSLHandshake.HELLO_VERIFY_REQUEST.id);
             }
             if (!chc.handshakeConsumers.isEmpty()) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "No more message expected before ServerHello is processed");
             }
 
@@ -900,14 +895,14 @@ final class ServerHello {
             }
 
             if (!chc.activeProtocols.contains(serverVersion)) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "The server selected protocol version " + serverVersion +
                     " is not accepted by client preferences " +
                     chc.activeProtocols);
             }
 
             if (!serverVersion.useTLS13PlusSpec()) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "Unexpected HelloRetryRequest for " + serverVersion.name);
             }
 
@@ -952,7 +947,7 @@ final class ServerHello {
             }
 
             if (!chc.activeProtocols.contains(serverVersion)) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "The server selected protocol version " + serverVersion +
                     " is not accepted by client preferences " +
                     chc.activeProtocols);
@@ -969,7 +964,7 @@ final class ServerHello {
             }
 
             if (serverHello.serverRandom.isVersionDowngrade(chc)) {
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "A potential protocol version downgrade attack");
             }
 
@@ -1012,7 +1007,7 @@ final class ServerHello {
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             ServerHelloMessage serverHello = (ServerHelloMessage)message;
             if (!chc.isNegotiable(serverHello.serverVersion)) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "Server chose " + serverHello.serverVersion +
                     ", but that protocol version is not enabled or " +
                     "not supported by the client.");
@@ -1024,7 +1019,7 @@ final class ServerHello {
                     chc.negotiatedProtocol, chc.negotiatedCipherSuite);
             chc.serverHelloRandom = serverHello.serverRandom;
             if (chc.negotiatedCipherSuite.keyExchange == null) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "TLS 1.2 or prior version does not support the " +
                     "server cipher suite: " + chc.negotiatedCipherSuite.name);
             }
@@ -1050,7 +1045,7 @@ final class ServerHello {
                     // Verify that the session ciphers are unchanged.
                     CipherSuite sessionSuite = chc.resumingSession.getSuite();
                     if (chc.negotiatedCipherSuite != sessionSuite) {
-                        throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                        chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                             "Server returned wrong cipher suite for session");
                     }
 
@@ -1058,7 +1053,7 @@ final class ServerHello {
                     ProtocolVersion sessionVersion =
                             chc.resumingSession.getProtocolVersion();
                     if (chc.negotiatedProtocol != sessionVersion) {
-                        throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                        chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                             "Server resumed with wrong protocol version");
                     }
 
@@ -1077,7 +1072,7 @@ final class ServerHello {
                     }
                     chc.isResumption = false;
                     if (!chc.sslConfig.enableSessionCreation) {
-                        throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                        chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                             "New session creation is disabled");
                     }
                 }
@@ -1096,7 +1091,7 @@ final class ServerHello {
                 }
 
                 if (!chc.sslConfig.enableSessionCreation) {
-                    throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                    chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                         "New session creation is disabled");
                 }
                 chc.handshakeSession = new SSLSessionImpl(chc,
@@ -1117,7 +1112,7 @@ final class ServerHello {
                         SSLTrafficKeyDerivation.valueOf(chc.negotiatedProtocol);
                 if (kdg == null) {
                     // unlikely
-                    throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    chc.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Not supported key derivation: " +
                             chc.negotiatedProtocol);
                 } else {
@@ -1188,7 +1183,7 @@ final class ServerHello {
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             ServerHelloMessage serverHello = (ServerHelloMessage)message;
             if (serverHello.serverVersion != ProtocolVersion.TLS12) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "The ServerHello.legacy_version field is not TLS 1.2");
             }
 
@@ -1213,7 +1208,7 @@ final class ServerHello {
                 }
 
                 if (!chc.sslConfig.enableSessionCreation) {
-                    throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                    chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                         "New session creation is disabled");
                 }
                 chc.handshakeSession = new SSLSessionImpl(chc,
@@ -1226,7 +1221,7 @@ final class ServerHello {
                 Optional<SecretKey> psk =
                         chc.resumingSession.consumePreSharedKey();
                 if(!psk.isPresent()) {
-                    throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                    chc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "No PSK available. Unable to resume.");
                 }
 
@@ -1247,8 +1242,9 @@ final class ServerHello {
             SSLKeyExchange ke = chc.handshakeKeyExchange;
             if (ke == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not negotiated key shares");
+                return;     // make the compiler happy
             }
 
             SSLKeyDerivation handshakeKD = ke.createKeyDerivation(chc);
@@ -1258,9 +1254,10 @@ final class ServerHello {
                 SSLTrafficKeyDerivation.valueOf(chc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         chc.negotiatedProtocol);
+                return;     // make the compiler happy
             }
 
             SSLKeyDerivation secretKD =
@@ -1287,15 +1284,9 @@ final class ServerHello {
                         chc.sslContext.getSecureRandom());
             } catch (GeneralSecurityException gse) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Missing cipher algorithm", gse);
-            }
-
-            if (readCipher == null) {
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                    "Illegal cipher suite (" + chc.negotiatedCipherSuite +
-                    ") and protocol version (" + chc.negotiatedProtocol +
-                    ")");
+                return;     // make the compiler happy
             }
 
             chc.baseReadSecret = readSecret;
@@ -1321,15 +1312,9 @@ final class ServerHello {
                         chc.sslContext.getSecureRandom());
             } catch (GeneralSecurityException gse) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Missing cipher algorithm", gse);
-            }
-
-            if (writeCipher == null) {
-                throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                    "Illegal cipher suite (" + chc.negotiatedCipherSuite +
-                    ") and protocol version (" + chc.negotiatedProtocol +
-                    ")");
+                return;     //  make the compiler happy
             }
 
             chc.baseWriteSecret = writeSecret;
@@ -1391,7 +1376,7 @@ final class ServerHello {
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             ServerHelloMessage helloRetryRequest = (ServerHelloMessage)message;
             if (helloRetryRequest.serverVersion != ProtocolVersion.TLS12) {
-                throw chc.conContext.fatal(Alert.PROTOCOL_VERSION,
+                chc.conContext.fatal(Alert.PROTOCOL_VERSION,
                     "The HelloRetryRequest.legacy_version is not TLS 1.2");
             }
 
@@ -1421,7 +1406,7 @@ final class ServerHello {
                 chc.initialClientHelloMsg.write(hos);
             } catch (IOException ioe) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                     "Failed to construct message hash", ioe);
             }
             chc.handshakeHash.deliver(hos.toByteArray());

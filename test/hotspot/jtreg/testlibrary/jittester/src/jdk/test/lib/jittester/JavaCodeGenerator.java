@@ -34,7 +34,7 @@ public class JavaCodeGenerator extends TestsGenerator {
     private static final String DEFAULT_SUFFIX = "java_tests";
 
     JavaCodeGenerator() {
-        this(DEFAULT_SUFFIX, JavaCodeGenerator::generatePrerunAction, "-Xcomp");
+        this(DEFAULT_SUFFIX, JavaCodeGenerator::generatePrerunAction, "");
     }
 
     JavaCodeGenerator(String prefix, Function<String, String[]> preRunActions, String jtDriverOptions) {
@@ -64,16 +64,13 @@ public class JavaCodeGenerator extends TestsGenerator {
     }
 
     private void compileJavaFile(String mainClassName) {
-        String classPath = tmpDir.toString();
-        ProcessBuilder pb = new ProcessBuilder(JAVAC,
-                "-d", classPath,
-                "-cp", classPath,
+        String classPath = getRoot().resolve(generatorDir)
+                                    .toAbsolutePath()
+                                    .toString();
+        ProcessBuilder pb = new ProcessBuilder(JAVAC, "-cp", classPath,
                 generatorDir.resolve(mainClassName + ".java").toString());
         try {
-            int r = runProcess(pb, tmpDir.resolve(mainClassName + ".javac").toString());
-            if (r != 0) {
-                throw new Error("Can't compile sources, exit code = " + r);
-            }
+            runProcess(pb, generatorDir.resolve(mainClassName).toString());
         } catch (IOException | InterruptedException e) {
             throw new Error("Can't compile sources ", e);
         }

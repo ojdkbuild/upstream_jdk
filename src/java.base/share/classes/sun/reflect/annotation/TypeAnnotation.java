@@ -187,17 +187,19 @@ public final class TypeAnnotation {
             return new LocationInfo(newDepth, res);
         }
 
-        /**
-         * Pops a location matching {@code tag}, or returns {@code null}
-         * if no matching location was found.
-         */
-        public LocationInfo popLocation(byte tag) {
-            if (depth == 0 || locations[depth - 1].tag != tag) {
-                return null;
+        /** Pop a series of locations matching {@code tag}. Stop poping as soon as a non-matching tag is found. */
+        public LocationInfo popAllLocations(byte tag) {
+            LocationInfo l = this;
+            int newDepth = l.depth;
+            while(newDepth > 0 && l.locations[newDepth - 1].tag == tag) {
+                newDepth--;
             }
-            Location[] res = new Location[depth - 1];
-            System.arraycopy(locations, 0, res, 0, depth - 1);
-            return new LocationInfo(depth - 1, res);
+            if (newDepth != l.depth) {
+                Location[] res = new Location[newDepth];
+                System.arraycopy(this.locations, 0, res, 0, newDepth);
+                return new LocationInfo(newDepth, res);
+            } else
+                return l;
         }
 
         public TypeAnnotation[] filter(TypeAnnotation[] ta) {

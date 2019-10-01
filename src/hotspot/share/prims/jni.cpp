@@ -823,7 +823,9 @@ JNI_QUICK_ENTRY(jboolean, jni_IsSameObject(JNIEnv *env, jobject r1, jobject r2))
 
   HOTSPOT_JNI_ISSAMEOBJECT_ENTRY(env, r1, r2);
 
-  jboolean ret = JNIHandles::is_same_object(r1, r2) ? JNI_TRUE : JNI_FALSE;
+  oop a = JNIHandles::resolve(r1);
+  oop b = JNIHandles::resolve(r2);
+  jboolean ret = oopDesc::equals(a, b) ? JNI_TRUE : JNI_FALSE;
 
   HOTSPOT_JNI_ISSAMEOBJECT_RETURN(ret);
   return ret;

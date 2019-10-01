@@ -102,10 +102,10 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
         try {
             conContext.kickstart();
         } catch (IOException ioe) {
-            throw conContext.fatal(Alert.HANDSHAKE_FAILURE,
+            conContext.fatal(Alert.HANDSHAKE_FAILURE,
                 "Couldn't kickstart handshaking", ioe);
         } catch (Exception ex) {     // including RuntimeException
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                 "Fail to begin handshake", ex);
         }
     }
@@ -137,14 +137,16 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                 srcs, srcsOffset, srcsLength, dsts, dstsOffset, dstsLength);
         } catch (SSLProtocolException spe) {
             // may be an unexpected handshake message
-            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE, spe);
+            conContext.fatal(Alert.UNEXPECTED_MESSAGE, spe);
         } catch (IOException ioe) {
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                 "problem wrapping app data", ioe);
         } catch (Exception ex) {     // including RuntimeException
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                 "Fail to wrap application data", ex);
         }
+
+        return null;    // make compiler happy
     }
 
     private SSLEngineResult writeRecord(
@@ -247,19 +249,6 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
             hsStatus = ciphertext.handshakeStatus;
         } else {
             hsStatus = getHandshakeStatus();
-            if (ciphertext == null && !conContext.isNegotiated &&
-                    conContext.isInboundClosed() &&
-                    hsStatus == HandshakeStatus.NEED_WRAP) {
-                // Even the outboud is open, no futher data could be wrapped as:
-                //     1. the outbound is empty
-                //     2. no negotiated connection
-                //     3. the inbound has closed, cannot complete the handshake
-                //
-                // Mark the engine as closed if the handshake status is
-                // NEED_WRAP. Otherwise, it could lead to dead loops in
-                // applications.
-                status = Status.CLOSED;
-            }
         }
 
         int deltaSrcs = srcsRemains;
@@ -286,13 +275,13 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                 srcs, srcsOffset, srcsLength, dsts, dstsOffset, dstsLength);
         } catch (SSLHandshakeException she) {
             // may be record sequence number overflow
-            throw conContext.fatal(Alert.HANDSHAKE_FAILURE, she);
+            conContext.fatal(Alert.HANDSHAKE_FAILURE, she);
         } catch (IOException e) {
-            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE, e);
+            conContext.fatal(Alert.UNEXPECTED_MESSAGE, e);
         }
 
         if (ciphertext == null) {
-            return null;
+            return Ciphertext.CIPHERTEXT_NULL;
         }
 
         // Is the handshake completed?
@@ -455,7 +444,7 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                 srcs, srcsOffset, srcsLength, dsts, dstsOffset, dstsLength);
         } catch (SSLProtocolException spe) {
             // may be an unexpected handshake message
-            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     spe.getMessage(), spe);
         } catch (IOException ioe) {
             /*
@@ -464,12 +453,14 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
              * got us into this situation, so report that much back.
              * Our days of consuming are now over anyway.
              */
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                     "problem unwrapping net record", ioe);
         } catch (Exception ex) {     // including RuntimeException
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                 "Fail to unwrap network record", ex);
         }
+
+        return null;    // make compiler happy
     }
 
     private SSLEngineResult readRecord(
@@ -730,7 +721,7 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
         if (!conContext.isInputCloseNotified &&
             (conContext.isNegotiated || conContext.handshakeContext != null)) {
 
-            throw conContext.fatal(Alert.INTERNAL_ERROR,
+            conContext.fatal(Alert.INTERNAL_ERROR,
                     "closing inbound before receiving peer's close_notify");
         }
 

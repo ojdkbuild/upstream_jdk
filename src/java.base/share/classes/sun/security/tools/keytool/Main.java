@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ import java.security.cert.URICertStoreParameters;
 
 
 import java.security.interfaces.ECKey;
-import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.text.Collator;
 import java.text.MessageFormat;
@@ -1432,16 +1431,14 @@ public final class Main {
         signature.initSign(privateKey);
 
         X509CertInfo info = new X509CertInfo();
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privateKey);
-        AlgorithmId algID = AlgorithmId.getWithParameterSpec(sigAlgName, params);
         info.set(X509CertInfo.VALIDITY, interval);
         info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(
                     new java.util.Random().nextInt() & 0x7fffffff));
         info.set(X509CertInfo.VERSION,
                     new CertificateVersion(CertificateVersion.V3));
         info.set(X509CertInfo.ALGORITHM_ID,
-                    new CertificateAlgorithmId(algID));
+                    new CertificateAlgorithmId(
+                        AlgorithmId.get(sigAlgName)));
         info.set(X509CertInfo.ISSUER, issuer);
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -1485,7 +1482,7 @@ public final class Main {
                 signerCert.getPublicKey());
         info.set(X509CertInfo.EXTENSIONS, ext);
         X509CertImpl cert = new X509CertImpl(info);
-        cert.sign(privateKey, params, sigAlgName, null);
+        cert.sign(privateKey, sigAlgName);
         dumpCert(cert, out);
         for (Certificate ca: keyStore.getCertificateChain(alias)) {
             if (ca instanceof X509Certificate) {
@@ -1588,12 +1585,6 @@ public final class Main {
 
         Signature signature = Signature.getInstance(sigAlgName);
         signature.initSign(privKey);
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        if (params != null) {
-            signature.setParameter(params);
-        }
-
         X500Name subject = dname == null?
                 new X500Name(((X509Certificate)cert).getSubjectDN().toString()):
                 new X500Name(dname);
@@ -2971,9 +2962,7 @@ public final class Main {
         // other solution: We first sign the cert, then retrieve the
         // outer sigalg and use it to set the inner sigalg
         X509CertImpl newCert = new X509CertImpl(certInfo);
-        AlgorithmParameterSpec params = AlgorithmId
-                .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        newCert.sign(privKey, params, sigAlgName, null);
+        newCert.sign(privKey, sigAlgName);
         AlgorithmId sigAlgid = (AlgorithmId)newCert.get(X509CertImpl.SIG_ALG);
         certInfo.set(CertificateAlgorithmId.NAME + "." +
                      CertificateAlgorithmId.ALGORITHM, sigAlgid);
@@ -2990,7 +2979,7 @@ public final class Main {
         certInfo.set(X509CertInfo.EXTENSIONS, ext);
         // Sign the new certificate
         newCert = new X509CertImpl(certInfo);
-        newCert.sign(privKey, params, sigAlgName, null);
+        newCert.sign(privKey, sigAlgName);
 
         // Store the new certificate as a single-element certificate chain
         keyStore.setKeyEntry(alias, privKey,

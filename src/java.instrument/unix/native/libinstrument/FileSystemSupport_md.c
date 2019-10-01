@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2004, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
  * questions.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,10 +50,6 @@ char* basePath(const char* path) {
     } else {
         int len = last - path;
         char* str = (char*)malloc(len+1);
-        if (str == NULL) {
-            fprintf(stderr, "OOM error in native tmp buffer allocation");
-            return NULL;
-        }
         if (len > 0) {
             memcpy(str, path, len);
         }
@@ -85,10 +80,6 @@ static char* normalizePath(const char* pathname, int len, int off) {
     if (n == 0) return strdup("/");
 
     sb = (char*)malloc(strlen(pathname)+1);
-    if (sb == NULL) {
-        fprintf(stderr, "OOM error in native tmp buffer allocation");
-        return NULL;
-    }
     sbLen = 0;
 
     if (off > 0) {
@@ -137,10 +128,6 @@ char* resolve(const char* parent, const char* child) {
     len = parentEnd + cn - childStart;
     if (child[0] == slash) {
         theChars = (char*)malloc(len+1);
-        if (theChars == NULL) {
-            fprintf(stderr, "OOM error in native tmp buffer allocation");
-            return NULL;
-        }
         if (parentEnd > 0)
             memcpy(theChars, parent, parentEnd);
         if (cn > 0)
@@ -148,10 +135,6 @@ char* resolve(const char* parent, const char* child) {
         theChars[len] = '\0';
     } else {
         theChars = (char*)malloc(len+2);
-        if (theChars == NULL) {
-            fprintf(stderr, "OOM error in native tmp buffer allocation");
-            return NULL;
-        }
         if (parentEnd > 0)
             memcpy(theChars, parent, parentEnd);
         theChars[parentEnd] = slash;
@@ -167,13 +150,10 @@ char* fromURIPath(const char* path) {
     if (len > 1 && path[len-1] == slash) {
         // "/foo/" --> "/foo", but "/" --> "/"
         char* str = (char*)malloc(len);
-        if (str == NULL)
-        {
-            fprintf(stderr, "OOM error in native tmp buffer allocation");
-            return NULL;
+        if (str != NULL) {
+            memcpy(str, path, len-1);
+            str[len-1] = '\0';
         }
-        memcpy(str, path, len-1);
-        str[len-1] = '\0';
         return str;
     } else {
         return (char*)path;

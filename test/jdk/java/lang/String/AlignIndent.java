@@ -23,8 +23,8 @@
 
 /*
  * @test
- * @summary Unit tests for String#indent
- * @run main Indent
+ * @summary Unit tests for String#align and String#indent
+ * @run main AlignIndent
  */
 
 import java.util.Arrays;
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Indent {
+public class AlignIndent {
     static final List<String> ENDS = List.of("", "\n", "   \n", "\n\n", "\n\n\n");
     static final List<String> MIDDLES = List.of(
             "",
@@ -51,12 +51,84 @@ public class Indent {
 
     public static void main(String[] args) {
         test1();
+        test2();
+        test3();
+        test4();
+    }
+
+    /*
+     * Test String#align() functionality.
+     */
+    static void test1() {
+        for (String prefix : ENDS) {
+            for (String suffix : ENDS) {
+                for (String middle : MIDDLES) {
+                    {
+                        String input = prefix + "   abc   \n" + middle + "\n   def   \n" + suffix;
+                        String output = input.align();
+
+                        String[] inLines = input.split("\\R");
+                        String[] outLines = output.split("\\R");
+
+                        String[] inLinesBody = getBody(inLines);
+
+                        if (inLinesBody.length < outLines.length) {
+                            report("String::align()", "Result has more lines than expected", input, output);
+                        } else if (inLinesBody.length > outLines.length) {
+                            report("String::align()", "Result has fewer lines than expected", input, output);
+                        }
+
+                        int indent = -1;
+                        for (int i = 0; i < inLinesBody.length; i++) {
+                            String in = inLinesBody[i];
+                            String out = outLines[i];
+                            if (!out.isBlank()) {
+                                int offset = in.indexOf(out);
+                                if (offset == -1) {
+                                    report("String::align()", "Portions of line are missing", input, output);
+                                }
+                                if (indent == -1) {
+                                    indent = offset;
+                                } else if (offset != indent) {
+                                    report("String::align()",
+                                            "Inconsistent indentation in result", input, output);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * Test String#align(int n) functionality.
+     */
+    static void test2() {
+        for (int adjust : new int[] {-8, -7, -4, -3, -2, -1, 0, 1, 2, 3, 4, 7, 8}) {
+            for (String prefix : ENDS) {
+                for (String suffix : ENDS) {
+                    for (String middle : MIDDLES) {
+                        {
+                            String input = prefix + "   abc   \n" + middle + "\n   def   \n" + suffix;
+                            String output = input.align(adjust);
+                            String expected = input.align().indent(adjust);
+
+                            if (!output.equals(expected)) {
+                                report("String::align(int n)",
+                                        "Result inconsistent with align().indent(n)", expected, output);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /*
      * Test String#indent(int n) functionality.
      */
-    static void test1() {
+    static void test3() {
         for (int adjust : new int[] {-8, -7, -4, -3, -2, -1, 0, 1, 2, 3, 4, 7, 8}) {
             for (String prefix : ENDS) {
                 for (String suffix : ENDS) {
@@ -67,7 +139,7 @@ public class Indent {
                         Stream<String> stream = input.lines();
                         if (adjust > 0) {
                             final String spaces = " ".repeat(adjust);
-                            stream = stream.map(s -> spaces + s);
+                            stream = stream.map(s -> s.isBlank() ? s : spaces + s);
                         } else if (adjust < 0) {
                             stream = stream.map(s -> s.substring(Math.min(-adjust, indexOfNonWhitespace(s))));
                         }
@@ -80,6 +152,18 @@ public class Indent {
                     }
                 }
             }
+        }
+    }
+
+    /*
+     * JDK-8212694: Using Raw String Literals with align() and Integer.MIN_VALUE causes out of memory error
+     */
+    static void test4() {
+        try {
+            String str = "\n    A\n".align(Integer.MIN_VALUE);
+        } catch (OutOfMemoryError ex) {
+            System.err.println("align(Integer.MIN_VALUE) not clipping indentation");
+            throw new RuntimeException();
         }
     }
 

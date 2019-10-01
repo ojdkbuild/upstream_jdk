@@ -111,10 +111,10 @@ final class CertificateMessage {
                     encodedCerts.add(cert.getEncoded());
                 } catch (CertificateEncodingException cee) {
                     // unlikely
-                    throw handshakeContext.conContext.fatal(
-                            Alert.INTERNAL_ERROR,
+                    handshakeContext.conContext.fatal(Alert.INTERNAL_ERROR,
                             "Could not encode certificate (" +
                             cert.getSubjectX500Principal() + ")", cee);
+                    break;
                 }
             }
 
@@ -127,8 +127,7 @@ final class CertificateMessage {
 
             int listLen = Record.getInt24(m);
             if (listLen > m.remaining()) {
-                throw handshakeContext.conContext.fatal(
-                    Alert.ILLEGAL_PARAMETER,
+                handshakeContext.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Error parsing certificate message:no sufficient data");
             }
             if (listLen > 0) {
@@ -249,8 +248,10 @@ final class CertificateMessage {
             }
 
             if (x509Possession == null) {       // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "No expected X.509 certificate for server authentication");
+
+                return null;        // make the compiler happy
             }
 
             shc.handshakeSession.setLocalPrivateKey(
@@ -374,7 +375,7 @@ final class CertificateMessage {
                 if (shc.sslConfig.clientAuthType !=
                         ClientAuthType.CLIENT_AUTH_REQUESTED) {
                     // unexpected or require client authentication
-                    throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                    shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                         "Empty server certificate chain");
                 } else {
                     return;
@@ -391,7 +392,7 @@ final class CertificateMessage {
                                     new ByteArrayInputStream(encodedCert));
                 }
             } catch (CertificateException ce) {
-                throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Failed to parse server certificates", ce);
             }
 
@@ -409,7 +410,7 @@ final class CertificateMessage {
                 T12CertificateMessage certificateMessage) throws IOException {
             List<byte[]> encodedCerts = certificateMessage.encodedCertChain;
             if (encodedCerts == null || encodedCerts.isEmpty()) {
-                throw chc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                chc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Empty server certificate chain");
             }
 
@@ -423,7 +424,7 @@ final class CertificateMessage {
                                     new ByteArrayInputStream(encodedCert));
                 }
             } catch (CertificateException ce) {
-                throw chc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                chc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Failed to parse server certificates", ce);
             }
 
@@ -442,7 +443,7 @@ final class CertificateMessage {
                 if ((identityAlg == null || identityAlg.isEmpty()) &&
                         !isIdentityEquivalent(x509Certs[0],
                                 chc.reservedServerCerts[0])) {
-                    throw chc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                    chc.conContext.fatal(Alert.BAD_CERTIFICATE,
                             "server certificate change is restricted " +
                             "during renegotiation");
                 }
@@ -638,7 +639,7 @@ final class CertificateMessage {
                 // the certificate chain in the TLS session.
                 chc.handshakeSession.setPeerCertificates(certs);
             } catch (CertificateException ce) {
-                throw chc.conContext.fatal(getCertificateAlert(chc, ce), ce);
+                chc.conContext.fatal(getCertificateAlert(chc, ce), ce);
             }
         }
 
@@ -684,7 +685,7 @@ final class CertificateMessage {
                             "Improper X509TrustManager implementation");
                 }
             } catch (CertificateException ce) {
-                throw shc.conContext.fatal(Alert.CERTIFICATE_UNKNOWN, ce);
+                shc.conContext.fatal(Alert.CERTIFICATE_UNKNOWN, ce);
             }
         }
 
@@ -941,20 +942,22 @@ final class CertificateMessage {
 
             SSLPossession pos = choosePossession(shc, clientHello);
             if (pos == null) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "No available authentication scheme");
+                return null;    // make the complier happy
             }
 
             if (!(pos instanceof X509Possession)) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "No X.509 certificate for server authentication");
             }
 
             X509Possession x509Possession = (X509Possession)pos;
             X509Certificate[] localCerts = x509Possession.popCerts;
             if (localCerts == null || localCerts.length == 0) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "No X.509 certificate for server authentication");
+                return null;    // make the complier happy
             }
 
             // update the context
@@ -966,8 +969,9 @@ final class CertificateMessage {
             try {
                 cm = new T13CertificateMessage(shc, (new byte[0]), localCerts);
             } catch (SSLException | CertificateException ce) {
-                throw shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                shc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Failed to produce server Certificate message", ce);
+                return null;    // make the complier happy
             }
 
             // Check the OCSP stapling extensions and attempt
@@ -1104,8 +1108,9 @@ final class CertificateMessage {
                 cm = new T13CertificateMessage(
                         chc, chc.certRequestContext, localCerts);
             } catch (SSLException | CertificateException ce) {
-                throw chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                chc.conContext.fatal(Alert.HANDSHAKE_FAILURE,
                         "Failed to produce client Certificate message", ce);
+                return null;
             }
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced client Certificate message", cm);
@@ -1158,7 +1163,7 @@ final class CertificateMessage {
             if (certificateMessage.certEntries == null ||
                     certificateMessage.certEntries.isEmpty()) {
                 if (shc.sslConfig.clientAuthType == CLIENT_AUTH_REQUIRED) {
-                    throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                    shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                         "Empty client certificate chain");
                 } else {
                     // optional client authentication
@@ -1182,7 +1187,7 @@ final class CertificateMessage {
                 T13CertificateMessage certificateMessage )throws IOException {
             if (certificateMessage.certEntries == null ||
                     certificateMessage.certEntries.isEmpty()) {
-                throw chc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                chc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Empty server certificate chain");
             }
 
@@ -1219,7 +1224,7 @@ final class CertificateMessage {
                                     new ByteArrayInputStream(entry.encoded));
                 }
             } catch (CertificateException ce) {
-                throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Failed to parse server certificates", ce);
             }
 
@@ -1265,7 +1270,7 @@ final class CertificateMessage {
                 // the certificate chain in the TLS session.
                 shc.handshakeSession.setPeerCertificates(certs);
             } catch (CertificateException ce) {
-                throw shc.conContext.fatal(Alert.CERTIFICATE_UNKNOWN, ce);
+                shc.conContext.fatal(Alert.CERTIFICATE_UNKNOWN, ce);
             }
 
             return certs;
@@ -1284,7 +1289,7 @@ final class CertificateMessage {
                                     new ByteArrayInputStream(entry.encoded));
                 }
             } catch (CertificateException ce) {
-                throw chc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                chc.conContext.fatal(Alert.BAD_CERTIFICATE,
                     "Failed to parse server certificates", ce);
             }
 
@@ -1321,7 +1326,7 @@ final class CertificateMessage {
                 // the certificate chain in the TLS session.
                 chc.handshakeSession.setPeerCertificates(certs);
             } catch (CertificateException ce) {
-                throw chc.conContext.fatal(getCertificateAlert(chc, ce), ce);
+                chc.conContext.fatal(getCertificateAlert(chc, ce), ce);
             }
 
             return certs;

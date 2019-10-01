@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2005, Oracle and/or its affiliates. All rights reserved.
  */
 
 /* Copyright  (c) 2002 Graz University of Technology. All rights reserved.
@@ -75,20 +75,18 @@
  * Signature: (Ljava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_sun_security_pkcs11_wrapper_PKCS11_connect
-    (JNIEnv *env, jobject obj, jstring jPkcs11ModulePath,
-        jstring jGetFunctionList)
+    (JNIEnv *env, jobject obj, jstring jPkcs11ModulePath, jstring jGetFunctionList)
 {
     HINSTANCE hModule;
     CK_C_GetFunctionList C_GetFunctionList;
-    CK_RV rv = CK_ASSERT_OK;
+    CK_RV rv;
     ModuleData *moduleData;
     jobject globalPKCS11ImplementationReference;
-    LPVOID lpMsgBuf = NULL;
-    char *exceptionMessage = NULL;
+    LPVOID lpMsgBuf;
+    char *exceptionMessage;
     const char *getFunctionListStr;
 
-    const char *libraryNameStr = (*env)->GetStringUTFChars(env,
-            jPkcs11ModulePath, 0);
+    const char *libraryNameStr = (*env)->GetStringUTFChars(env, jPkcs11ModulePath, 0);
     TRACE1("DEBUG: connect to PKCS#11 module: %s ... ", libraryNameStr);
 
 
@@ -108,24 +106,21 @@ JNIEXPORT void JNICALL Java_sun_security_pkcs11_wrapper_PKCS11_connect
             0,
             NULL
         );
-        exceptionMessage = (char *) malloc(sizeof(char) *
-                (strlen((LPTSTR) lpMsgBuf) + strlen(libraryNameStr) + 1));
-        if (exceptionMessage == NULL) {
-            throwOutOfMemoryError(env, 0);
-            goto cleanup;
-        }
+        exceptionMessage = (char *) malloc(sizeof(char) * (strlen((LPTSTR) lpMsgBuf) + strlen(libraryNameStr) + 1));
         strcpy(exceptionMessage, (LPTSTR) lpMsgBuf);
         strcat(exceptionMessage, libraryNameStr);
         throwIOException(env, (LPTSTR) exceptionMessage);
-        goto cleanup;
+        /* Free the buffer. */
+        free(exceptionMessage);
+        LocalFree(lpMsgBuf);
+        return;
     }
 
     /*
      * Get function pointer to C_GetFunctionList
      */
     getFunctionListStr = (*env)->GetStringUTFChars(env, jGetFunctionList, 0);
-    C_GetFunctionList = (CK_C_GetFunctionList) GetProcAddress(hModule,
-            getFunctionListStr);
+    C_GetFunctionList = (CK_C_GetFunctionList) GetProcAddress(hModule, getFunctionListStr);
     (*env)->ReleaseStringUTFChars(env, jGetFunctionList, getFunctionListStr);
     if (C_GetFunctionList == NULL) {
         FormatMessage(
@@ -140,36 +135,23 @@ JNIEXPORT void JNICALL Java_sun_security_pkcs11_wrapper_PKCS11_connect
             NULL
         );
         throwIOException(env, (LPTSTR) lpMsgBuf);
-        goto cleanup;
+        /* Free the buffer. */
+        LocalFree( lpMsgBuf );
+        return;
     }
 
     /*
      * Get function pointers to all PKCS #11 functions
      */
     moduleData = (ModuleData *) malloc(sizeof(ModuleData));
-    if (moduleData == NULL) {
-        throwOutOfMemoryError(env, 0);
-        goto cleanup;
-    }
     moduleData->hModule = hModule;
     moduleData->applicationMutexHandler = NULL;
     rv = (C_GetFunctionList)(&(moduleData->ckFunctionListPtr));
     globalPKCS11ImplementationReference = (*env)->NewGlobalRef(env, obj);
     putModuleEntry(env, globalPKCS11ImplementationReference, moduleData);
 
+    (*env)->ReleaseStringUTFChars(env, jPkcs11ModulePath, libraryNameStr);
     TRACE0("FINISHED\n");
-
-cleanup:
-    /* Free up allocated buffers we no longer need */
-    if (lpMsgBuf != NULL) {
-        LocalFree( lpMsgBuf );
-    }
-    if (libraryNameStr != NULL) {
-        (*env)->ReleaseStringUTFChars(env, jPkcs11ModulePath, libraryNameStr);
-    }
-    if (exceptionMessage != NULL) {
-        free(exceptionMessage);
-    }
 
     if(ckAssertReturnValueOK(env, rv) != CK_ASSERT_OK) { return; }
 }

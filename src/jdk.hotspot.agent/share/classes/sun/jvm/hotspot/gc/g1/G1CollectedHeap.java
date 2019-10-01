@@ -47,7 +47,7 @@ import sun.jvm.hotspot.tools.HeapSummary;
 
 public class G1CollectedHeap extends CollectedHeap {
     // HeapRegionManager _hrm;
-    static private AddressField hrmField;
+    static private long hrmFieldOffset;
     // MemRegion _g1_reserved;
     static private long g1ReservedFieldOffset;
     // size_t _summary_bytes_used;
@@ -72,7 +72,7 @@ public class G1CollectedHeap extends CollectedHeap {
     static private synchronized void initialize(TypeDataBase db) {
         Type type = db.lookupType("G1CollectedHeap");
 
-        hrmField = type.getAddressField("_hrm");
+        hrmFieldOffset = type.getField("_hrm").getOffset();
         summaryBytesUsedField = type.getCIntegerField("_summary_bytes_used");
         g1mmField = type.getAddressField("_g1mm");
         oldSetFieldOffset = type.getField("_old_set").getOffset();
@@ -93,7 +93,7 @@ public class G1CollectedHeap extends CollectedHeap {
     }
 
     public HeapRegionManager hrm() {
-        Address hrmAddr = hrmField.getValue(addr);
+        Address hrmAddr = addr.addOffsetTo(hrmFieldOffset);
         return (HeapRegionManager) VMObjectFactory.newObject(HeapRegionManager.class,
                                                          hrmAddr);
     }

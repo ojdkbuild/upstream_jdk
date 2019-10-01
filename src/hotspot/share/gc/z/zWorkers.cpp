@@ -24,7 +24,6 @@
 #include "precompiled.hpp"
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zTask.hpp"
-#include "gc/z/zThread.hpp"
 #include "gc/z/zWorkers.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -65,26 +64,20 @@ uint ZWorkers::calculate_nconcurrent() {
   return calculate_nworkers(12.5);
 }
 
-class ZWorkersInitializeTask : public ZTask {
+class ZWorkersWarmupTask : public ZTask {
 private:
   const uint _nworkers;
   uint       _started;
   Monitor    _monitor;
 
 public:
-  ZWorkersInitializeTask(uint nworkers) :
-      ZTask("ZWorkersInitializeTask"),
+  ZWorkersWarmupTask(uint nworkers) :
+      ZTask("ZWorkersWarmupTask"),
       _nworkers(nworkers),
       _started(0),
-      _monitor(Monitor::leaf,
-               "ZWorkersInitialize",
-               false /* allow_vm_block */,
-               Monitor::_safepoint_check_never) {}
+      _monitor(Monitor::leaf, "ZWorkersWarmup", false, Monitor::_safepoint_check_never) {}
 
   virtual void work() {
-    // Register as worker
-    ZThread::set_worker();
-
     // Wait for all threads to start
     MonitorLockerEx ml(&_monitor, Monitor::_no_safepoint_check_flag);
     if (++_started == _nworkers) {
@@ -114,10 +107,10 @@ ZWorkers::ZWorkers() :
     vm_exit_during_initialization("Failed to create ZWorkers");
   }
 
-  // Execute task to register threads as workers. This also helps
-  // reduce latency in early GC pauses, which otherwise would have
-  // to take on any warmup costs.
-  ZWorkersInitializeTask task(nworkers());
+  // Warm up worker threads by having them execute a dummy task.
+  // This helps reduce latency in early GC pauses, which otherwise
+  // would have to take on any warmup costs.
+  ZWorkersWarmupTask task(nworkers());
   run(&task, nworkers());
 }
 

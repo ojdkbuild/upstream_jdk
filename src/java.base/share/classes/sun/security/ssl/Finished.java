@@ -83,7 +83,7 @@ final class Finished {
             try {
                 vd = vds.createVerifyData(context, false);
             } catch (IOException ioe) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                         "Failed to generate verify_data", ioe);
             }
 
@@ -102,7 +102,7 @@ final class Finished {
             }
 
             if (m.remaining() != verifyDataLen) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                     "Inappropriate finished message: need " + verifyDataLen +
                     " but remaining " + m.remaining() + " bytes verify_data");
             }
@@ -116,11 +116,12 @@ final class Finished {
             try {
                 myVerifyData = vd.createVerifyData(context, true);
             } catch (IOException ioe) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                         "Failed to generate verify_data", ioe);
+                return;     // make the compiler happy
             }
             if (!MessageDigest.isEqual(myVerifyData, verifyData)) {
-                throw context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
+                context.conContext.fatal(Alert.ILLEGAL_PARAMETER,
                         "The Finished message cannot be verified.");
             }
         }
@@ -517,7 +518,7 @@ final class Finished {
             // we have received ChangeCipherSpec
             if (hc.conContext.consumers.containsKey(
                     ContentType.CHANGE_CIPHER_SPEC.id)) {
-                throw hc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                hc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Missing ChangeCipherSpec message");
             }
 
@@ -678,17 +679,19 @@ final class Finished {
             SSLKeyDerivation kd = chc.handshakeKeyDerivation;
             if (kd == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "no key derivation");
+                return null;    // make the compiler happy
             }
 
             SSLTrafficKeyDerivation kdg =
                     SSLTrafficKeyDerivation.valueOf(chc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         chc.negotiatedProtocol);
+                return null;    // make the compiler happy
             }
 
             try {
@@ -710,29 +713,22 @@ final class Finished {
                                 chc.negotiatedProtocol, writeKey, writeIv,
                                 chc.sslContext.getSecureRandom());
 
-                if (writeCipher == null) {
-                    throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                        "Illegal cipher suite (" + chc.negotiatedCipherSuite +
-                        ") and protocol version (" + chc.negotiatedProtocol +
-                        ")");
-                }
-
                 chc.baseWriteSecret = writeSecret;
                 chc.conContext.outputRecord.changeWriteCiphers(
                         writeCipher, false);
 
             } catch (GeneralSecurityException gse) {
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Failure to derive application secrets", gse);
+                return null;    // make the compiler happy
             }
 
             // The resumption master secret is stored in the session so
             // it can be used after the handshake is completed.
             SSLSecretDerivation sd = ((SSLSecretDerivation) kd).forContext(chc);
             SecretKey resumptionMasterSecret = sd.deriveKey(
-                    "TlsResumptionMasterSecret", null);
-            chc.handshakeSession.setResumptionMasterSecret(
-                    resumptionMasterSecret);
+            "TlsResumptionMasterSecret", null);
+            chc.handshakeSession.setResumptionMasterSecret(resumptionMasterSecret);
 
             chc.conContext.conSession = chc.handshakeSession.finish();
             chc.conContext.protocolVersion = chc.negotiatedProtocol;
@@ -766,17 +762,19 @@ final class Finished {
             SSLKeyDerivation kd = shc.handshakeKeyDerivation;
             if (kd == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "no key derivation");
+                return null;    // make the compiler happy
             }
 
             SSLTrafficKeyDerivation kdg =
                     SSLTrafficKeyDerivation.valueOf(shc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         shc.negotiatedProtocol);
+                return null;    // make the compiler happy
             }
 
             // derive salt secret
@@ -812,13 +810,6 @@ final class Finished {
                                 shc.negotiatedProtocol, writeKey, writeIv,
                                 shc.sslContext.getSecureRandom());
 
-                if (writeCipher == null) {
-                    throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                        "Illegal cipher suite (" + shc.negotiatedCipherSuite +
-                        ") and protocol version (" + shc.negotiatedProtocol +
-                        ")");
-                }
-
                 shc.baseWriteSecret = writeSecret;
                 shc.conContext.outputRecord.changeWriteCiphers(
                         writeCipher, false);
@@ -826,8 +817,9 @@ final class Finished {
                 // update the context for the following key derivation
                 shc.handshakeKeyDerivation = secretKD;
             } catch (GeneralSecurityException gse) {
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Failure to derive application secrets", gse);
+                return null;    // make the compiler happy
             }
 
             /*
@@ -900,17 +892,19 @@ final class Finished {
             SSLKeyDerivation kd = chc.handshakeKeyDerivation;
             if (kd == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "no key derivation");
+                return;    // make the compiler happy
             }
 
             SSLTrafficKeyDerivation kdg =
                     SSLTrafficKeyDerivation.valueOf(chc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         chc.negotiatedProtocol);
+                return;    // make the compiler happy
             }
 
             // save the session
@@ -953,21 +947,15 @@ final class Finished {
                                 chc.negotiatedProtocol, readKey, readIv,
                                 chc.sslContext.getSecureRandom());
 
-                if (readCipher == null) {
-                    throw chc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                        "Illegal cipher suite (" + chc.negotiatedCipherSuite +
-                        ") and protocol version (" + chc.negotiatedProtocol +
-                        ")");
-                }
-
                 chc.baseReadSecret = readSecret;
                 chc.conContext.inputRecord.changeReadCiphers(readCipher);
 
                 // update the context for the following key derivation
                 chc.handshakeKeyDerivation = secretKD;
             } catch (GeneralSecurityException gse) {
-                throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
+                chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Failure to derive application secrets", gse);
+                return;    // make the compiler happy
             }
 
             //
@@ -1015,17 +1003,19 @@ final class Finished {
             SSLKeyDerivation kd = shc.handshakeKeyDerivation;
             if (kd == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                     "no key derivation");
+                return;    // make the compiler happy
             }
 
             SSLTrafficKeyDerivation kdg =
                     SSLTrafficKeyDerivation.valueOf(shc.negotiatedProtocol);
             if (kdg == null) {
                 // unlikely
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not supported key derivation: " +
                         shc.negotiatedProtocol);
+                return;    // make the compiler happy
             }
 
             // save the session
@@ -1054,28 +1044,20 @@ final class Finished {
                                 shc.negotiatedProtocol, readKey, readIv,
                                 shc.sslContext.getSecureRandom());
 
-                if (readCipher == null) {
-                    throw shc.conContext.fatal(Alert.ILLEGAL_PARAMETER,
-                        "Illegal cipher suite (" + shc.negotiatedCipherSuite +
-                        ") and protocol version (" + shc.negotiatedProtocol +
-                        ")");
-                }
-
                 shc.baseReadSecret = readSecret;
                 shc.conContext.inputRecord.changeReadCiphers(readCipher);
 
                 // The resumption master secret is stored in the session so
                 // it can be used after the handshake is completed.
                 shc.handshakeHash.update();
-                SSLSecretDerivation sd =
-                        ((SSLSecretDerivation)kd).forContext(shc);
+                SSLSecretDerivation sd = ((SSLSecretDerivation)kd).forContext(shc);
                 SecretKey resumptionMasterSecret = sd.deriveKey(
                 "TlsResumptionMasterSecret", null);
-                shc.handshakeSession.setResumptionMasterSecret(
-                        resumptionMasterSecret);
+                shc.handshakeSession.setResumptionMasterSecret(resumptionMasterSecret);
             } catch (GeneralSecurityException gse) {
-                throw shc.conContext.fatal(Alert.INTERNAL_ERROR,
+                shc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Failure to derive application secrets", gse);
+                return;    // make the compiler happy
             }
 
             //  update connection context

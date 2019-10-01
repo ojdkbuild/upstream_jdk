@@ -31,6 +31,8 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
  * Ciphertext
  */
 final class Ciphertext {
+    static final Ciphertext CIPHERTEXT_NULL = new Ciphertext();
+
     final byte contentType;
     final byte handshakeType;
     final long recordSN;

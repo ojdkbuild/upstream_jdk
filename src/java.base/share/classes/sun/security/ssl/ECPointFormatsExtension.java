@@ -231,12 +231,13 @@ final class ECPointFormatsExtension {
             try {
                 spec = new ECPointFormatsSpec(buffer);
             } catch (IOException ioe) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // per RFC 4492, uncompressed points must always be supported.
             if (!spec.hasUncompressedFormat()) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid ec_point_formats extension data: " +
                     "peer does not support uncompressed points");
             }
@@ -271,7 +272,7 @@ final class ECPointFormatsExtension {
             ECPointFormatsSpec requestedSpec = (ECPointFormatsSpec)
                     chc.handshakeExtensions.get(CH_EC_POINT_FORMATS);
             if (requestedSpec == null) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected ec_point_formats extension in ServerHello");
             }
 
@@ -280,12 +281,13 @@ final class ECPointFormatsExtension {
             try {
                 spec = new ECPointFormatsSpec(buffer);
             } catch (IOException ioe) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
+                return;     // fatal() always throws, make the compiler happy.
             }
 
             // per RFC 4492, uncompressed points must always be supported.
             if (!spec.hasUncompressedFormat()) {
-                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                         "Invalid ec_point_formats extension data: " +
                         "peer does not support uncompressed points");
             }

@@ -93,13 +93,10 @@ public class NTLMAuthentication extends AuthenticationInfo {
 
     /**
      * Returns true if the given site is trusted, i.e. we can try
-     * transparent Authentication. Shouldn't be called since
-     * capability not supported on Unix
+     * transparent Authentication.
      */
     public static boolean isTrustedSite(URL url) {
-        if (NTLMAuthCallback != null)
-            return NTLMAuthCallback.isTrustedSite(url);
-        return false;
+        return NTLMAuthCallback.isTrustedSite(url);
     }
 
     private void init0() {

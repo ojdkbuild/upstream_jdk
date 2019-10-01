@@ -25,7 +25,6 @@ package jdk.test.lib.jittester.types;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.TreeSet;
 import jdk.test.lib.jittester.ProductionParams;
 import jdk.test.lib.jittester.Symbol;
@@ -125,28 +124,26 @@ public class TypeKlass extends Type {
         TreeSet<TypeKlass> result = new TreeSet<>();
         parentsList.stream()
                 .map(TypeList::find)
-                .filter(Objects::nonNull)
-                .map(k -> (TypeKlass) k)
-                .forEach(k -> {
-                    if (result.add(k)) {
-                        result.addAll(k.getAllParents());
-                    }
+                .filter(parentKlass -> parentKlass != null)
+                .map(parentKlass -> (TypeKlass) parentKlass)
+                .forEach(parentKlass -> {
+                    result.add(parentKlass);
+                    result.addAll(parentKlass.getAllParents());
         });
         return result;
     }
 
     public TreeSet<TypeKlass> getAllChildren() {
-        TreeSet<TypeKlass> result = new TreeSet<>();
+        TreeSet<TypeKlass> r = new TreeSet<>();
         childrenList.stream()
                 .map(TypeList::find)
-                .filter(Objects::nonNull)
-                .map(k -> (TypeKlass) k)
-                .forEach(k -> {
-                    if (result.add(k)) {
-                        result.addAll(k.getAllChildren());
-                    }
+                .filter(childKlass -> childKlass != null)
+                .map(childKlass -> (TypeKlass) childKlass)
+                .forEach(childKlass -> {
+                    r.add(childKlass);
+                    r.addAll(childKlass.getAllChildren());
         });
-        return result;
+        return r;
     }
 
     @Override

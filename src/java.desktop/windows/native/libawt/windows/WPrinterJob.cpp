@@ -962,10 +962,9 @@ Java_sun_print_Win32PrintService_getDefaultSettings(JNIEnv *env,
               if (!present) {
                   defIndices[0] = papers[0];
               }
-          }
-          // If DeviceCapabilities fails, then also free paper allocation
-          if (papers != NULL) {
-              free((char*)papers);
+              if (papers != NULL) {
+                  free((char*)papers);
+              }
           }
       }
       RESTORE_CONTROLWORD
