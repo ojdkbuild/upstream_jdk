@@ -37,6 +37,9 @@ import java.rmi.MarshalException;
 import java.rmi.UnmarshalException;
 import java.rmi.server.ObjID;
 import java.rmi.server.RemoteCall;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+
 import sun.rmi.runtime.Log;
 import sun.rmi.server.UnicastRef;
 import sun.rmi.transport.tcp.TCPEndpoint;
@@ -142,7 +145,10 @@ public class StreamRemoteCall implements RemoteCall {
 
             in = new ConnectionInputStream(conn.getInputStream());
             if (filter != null) {
-                in.setObjectInputFilter(filter);
+                AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+                    in.setObjectInputFilter(filter);
+                    return null;
+                });
             }
         }
         return in;
@@ -263,6 +269,7 @@ public class StreamRemoteCall implements RemoteCall {
             try {
                 ex = in.readObject();
             } catch (Exception e) {
+                discardPendingRefs();
                 throw new UnmarshalException("Error unmarshaling return", e);
             }
 
@@ -271,6 +278,7 @@ public class StreamRemoteCall implements RemoteCall {
             if (ex instanceof Exception) {
                 exceptionReceivedFromServer((Exception) ex);
             } else {
+                discardPendingRefs();
                 throw new UnmarshalException("Return type not Exception");
             }
             // Exception is thrown before fallthrough can occur

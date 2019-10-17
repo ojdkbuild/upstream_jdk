@@ -123,7 +123,7 @@ public class TestSocketFactory extends RMISocketFactory
      * @return the previous value
      */
     public static boolean setDebug(boolean debug) {
-        boolean oldDebug = debug;
+        boolean oldDebug = debugLogging;
         debugLogging = debug;
         return oldDebug;
     }

@@ -27,6 +27,7 @@ package sun.rmi.transport;
 
 import sun.rmi.transport.tcp.TCPConnection;
 
+import java.io.IOException;
 import java.io.ObjectInputFilter;
 import java.rmi.RemoteException;
 import java.rmi.dgc.Lease;
@@ -74,10 +75,7 @@ public final class DGCImpl_Stub
         try {
             StreamRemoteCall call = (StreamRemoteCall)ref.newCall((java.rmi.server.RemoteObject) this,
                     operations, 0, interfaceHash);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                call.setObjectInputFilter(DGCImpl_Stub::leaseFilter);
-                return null;
-            });
+            call.setObjectInputFilter(DGCImpl_Stub::leaseFilter);
             try {
                 java.io.ObjectOutput out = call.getOutputStream();
                 out.writeObject($param_arrayOf_ObjID_1);
@@ -105,10 +103,7 @@ public final class DGCImpl_Stub
             StreamRemoteCall call =
                     (StreamRemoteCall)ref.newCall((java.rmi.server.RemoteObject) this,
                             operations, 1, interfaceHash);
-            AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-                call.setObjectInputFilter(DGCImpl_Stub::leaseFilter);
-                return null;
-            });
+            call.setObjectInputFilter(DGCImpl_Stub::leaseFilter);
             try {
                 java.io.ObjectOutput out = call.getOutputStream();
                 out.writeObject($param_arrayOf_ObjID_1);
@@ -123,11 +118,12 @@ public final class DGCImpl_Stub
             try {
                 java.io.ObjectInput in = call.getInputStream();
                 $result = (java.rmi.dgc.Lease) in.readObject();
-            } catch (java.io.IOException | java.lang.ClassNotFoundException e) {
+            } catch (ClassCastException | IOException | ClassNotFoundException e) {
                 if (connection instanceof TCPConnection) {
                     // Modified to prevent re-use of the connection after an exception
                     ((TCPConnection) connection).getChannel().free(connection, false);
                 }
+                call.discardPendingRefs();
                 throw new java.rmi.UnmarshalException("error unmarshalling return", e);
             } finally {
                 ref.done(call);
