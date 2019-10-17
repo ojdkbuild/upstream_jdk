@@ -242,6 +242,7 @@ WB_END
 void TestReservedSpace_test();
 void TestReserveMemorySpecial_test();
 void TestVirtualSpace_test();
+void TestMetaspaceUtils_test();
 #endif
 
 WB_ENTRY(void, WB_RunMemoryUnitTests(JNIEnv* env, jobject o))
@@ -249,6 +250,7 @@ WB_ENTRY(void, WB_RunMemoryUnitTests(JNIEnv* env, jobject o))
   TestReservedSpace_test();
   TestReserveMemorySpecial_test();
   TestVirtualSpace_test();
+  TestMetaspaceUtils_test();
 #endif
 WB_END
 

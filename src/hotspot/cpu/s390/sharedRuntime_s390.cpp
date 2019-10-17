@@ -2713,7 +2713,6 @@ AdapterHandlerEntry* SharedRuntime::generate_i2c2i_adapters(MacroAssembler *masm
   address c2i_entry = __ pc();
 
   // Class initialization barrier for static methods
-  address c2i_no_clinit_check_entry = NULL;
   if (VM_Version::supports_fast_class_init_checks()) {
     Label L_skip_barrier;
 
@@ -2730,12 +2729,11 @@ AdapterHandlerEntry* SharedRuntime::generate_i2c2i_adapters(MacroAssembler *masm
     __ z_br(klass);
 
     __ bind(L_skip_barrier);
-    c2i_no_clinit_check_entry = __ pc();
   }
 
   gen_c2i_adapter(masm, total_args_passed, comp_args_on_stack, sig_bt, regs, skip_fixup);
 
-  return AdapterHandlerLibrary::new_entry(fingerprint, i2c_entry, c2i_entry, c2i_unverified_entry, c2i_no_clinit_check_entry);
+  return AdapterHandlerLibrary::new_entry(fingerprint, i2c_entry, c2i_entry, c2i_unverified_entry);
 }
 
 // This function returns the adjust size (in number of words) to a c2i adapter

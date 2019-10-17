@@ -808,10 +808,8 @@ public class KDC {
 
             PrincipalName cname = null;
             boolean allowForwardable = true;
-            boolean isReferral = false;
+
             if (body.kdcOptions.get(KDCOptions.CANONICALIZE)) {
-                System.out.println(realm + "> verifying referral for " +
-                        body.sname.getNameString());
                 KDC referral = aliasReferrals.get(body.sname.getNameString());
                 if (referral != null) {
                     service = new PrincipalName(
@@ -819,9 +817,6 @@ public class KDC {
                             PrincipalName.NAME_COMPONENT_SEPARATOR_STR +
                             referral.getRealm(), PrincipalName.KRB_NT_SRV_INST,
                             this.getRealm());
-                    System.out.println(realm + "> referral to " +
-                            referral.getRealm());
-                    isReferral = true;
                 }
             }
 
@@ -923,8 +918,7 @@ public class KDC {
             if (body.kdcOptions.get(KDCOptions.ALLOW_POSTDATE)) {
                 bFlags[Krb5.TKT_OPTS_MAY_POSTDATE] = true;
             }
-            if (body.kdcOptions.get(KDCOptions.CNAME_IN_ADDL_TKT) &&
-                    !isReferral) {
+            if (body.kdcOptions.get(KDCOptions.CNAME_IN_ADDL_TKT)) {
                 if (!options.containsKey(Option.ALLOW_S4U2PROXY)) {
                     // Don't understand CNAME_IN_ADDL_TKT
                     throw new KrbException(Krb5.KDC_ERR_BADOPTION);
@@ -1080,7 +1074,8 @@ public class KDC {
             }
             int eType = eTypes[0];
 
-            if (body.kdcOptions.get(KDCOptions.CANONICALIZE)) {
+            if (body.kdcOptions.get(KDCOptions.CANONICALIZE) &&
+                    body.cname.getNameType() == PrincipalName.KRB_NT_ENTERPRISE) {
                 PrincipalName principal = alias2Principals.get(
                         body.cname.getNameString());
                 if (principal != null) {

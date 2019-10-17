@@ -34,8 +34,7 @@
  */
 
 // This test is excluded from Solaris because the 8192-bit RSA key pair
-// generator is extremely slow there. Please note the fake
-// KeyPairGenerator will not be used because of provider preferences.
+// generator is extremely slow there.
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.SecurityTools;

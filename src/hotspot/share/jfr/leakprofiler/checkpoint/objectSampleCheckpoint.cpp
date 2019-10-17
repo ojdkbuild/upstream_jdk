@@ -181,33 +181,34 @@ class SampleMark {
   }
 };
 
-void ObjectSampleCheckpoint::install(JfrCheckpointWriter& writer, bool class_unload, bool type_set) {
+void ObjectSampleCheckpoint::install(JfrCheckpointWriter& writer, bool class_unload) {
   if (!writer.has_data()) {
     return;
   }
 
   assert(writer.has_data(), "invariant");
   const JfrCheckpointBlobHandle h_cp = writer.checkpoint_blob();
-  CheckpointInstall install(h_cp);
 
   // Class unload implies a safepoint.
   // Not class unload implies the object sampler is locked, because it was claimed exclusively earlier.
   // Therefore: direct access the object sampler instance is safe.
-  ObjectSampler* const object_sampler = ObjectSampler::sampler();
+  const ObjectSampler* const object_sampler = ObjectSampler::sampler();
   assert(object_sampler != NULL, "invariant");
 
   ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
   const ObjectSample* const last_resolved = object_sampler->last_resolved();
+  CheckpointInstall install(h_cp);
 
-  // install only to new samples since last resolved checkpoint
+  if (class_unload) {
+    // all samples need class unload information
+    do_samples(last, NULL, install);
+    return;
+  }
+
+  // only new samples since last resolved checkpoint
   if (last != last_resolved) {
     do_samples(last, last_resolved, install);
-    if (class_unload) {
-      return;
-    }
-    if (type_set) {
-      object_sampler->set_last_resolved(last);
-    }
+    const_cast<ObjectSampler*>(object_sampler)->set_last_resolved(last);
   }
 }
 
@@ -288,6 +289,6 @@ bool WriteObjectSampleStacktrace::process() {
   JfrStackTraceRepository::write_metadata(writer);
 
   // install the stacktrace checkpoint information to the candidates
-  ObjectSampleCheckpoint::install(writer, false, false);
+  ObjectSampleCheckpoint::install(writer, false);
   return true;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 
 package sun.security.jgss.krb5;
-
-import sun.security.krb5.KerberosSecrets;
 
 import javax.security.auth.kerberos.KerberosTicket;
 import javax.security.auth.kerberos.KerberosKey;
@@ -184,45 +182,24 @@ class SubjectComber {
 
                                 }
                             } else {
-                                KerberosPrincipal serverAlias = KerberosSecrets
-                                        .getJavaxSecurityAuthKerberosAccess()
-                                        .kerberosTicketGetServerAlias(ticket);
                                 if (serverPrincipal == null ||
-                                    ticket.getServer().getName().equals(serverPrincipal) ||
-                                            (serverAlias != null &&
-                                                    serverPrincipal.equals(
-                                                            serverAlias.getName())))  {
-                                    KerberosPrincipal clientAlias = KerberosSecrets
-                                            .getJavaxSecurityAuthKerberosAccess()
-                                            .kerberosTicketGetClientAlias(ticket);
+                                    ticket.getServer().getName().equals(serverPrincipal))  {
+
                                     if (clientPrincipal == null ||
                                         clientPrincipal.equals(
-                                            ticket.getClient().getName()) ||
-                                            (clientAlias != null &&
-                                            clientPrincipal.equals(
-                                                    clientAlias.getName()))) {
+                                            ticket.getClient().getName())) {
                                         if (oneOnly) {
                                             return ticket;
                                         } else {
                                             // Record names so that tickets will
                                             // all belong to same principals
                                             if (clientPrincipal == null) {
-                                                if (clientAlias == null) {
-                                                    clientPrincipal =
-                                                            ticket.getClient().getName();
-                                                } else {
-                                                    clientPrincipal =
-                                                            clientAlias.getName();
-                                                }
+                                                clientPrincipal =
+                                                ticket.getClient().getName();
                                             }
                                             if (serverPrincipal == null) {
-                                                if (serverAlias == null) {
-                                                    serverPrincipal =
-                                                            ticket.getServer().getName();
-                                                } else {
-                                                    serverPrincipal =
-                                                            serverAlias.getName();
-                                                }
+                                                serverPrincipal =
+                                                ticket.getServer().getName();
                                             }
                                             answer.add(credClass.cast(ticket));
                                         }

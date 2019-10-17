@@ -45,27 +45,8 @@ import sun.security.krb5.PrincipalName;
  */
 final class ReferralsCache {
 
-    private static Map<ReferralCacheKey, Map<String, ReferralCacheEntry>>
-            referralsMap = new HashMap<>();
-
-    static private final class ReferralCacheKey {
-        private PrincipalName cname;
-        private PrincipalName sname;
-        ReferralCacheKey (PrincipalName cname, PrincipalName sname) {
-            this.cname = cname;
-            this.sname = sname;
-        }
-        public boolean equals(Object other) {
-            if (!(other instanceof ReferralCacheKey))
-                return false;
-            ReferralCacheKey that = (ReferralCacheKey)other;
-            return cname.equals(that.cname) &&
-                    sname.equals(that.sname);
-        }
-        public int hashCode() {
-            return cname.hashCode() + sname.hashCode();
-        }
-    }
+    private static Map<PrincipalName, Map<String, ReferralCacheEntry>> referralsMap =
+            new HashMap<>();
 
     static final class ReferralCacheEntry {
         private final Credentials creds;
@@ -83,9 +64,8 @@ final class ReferralsCache {
     }
 
     /*
-     * Add a new referral entry to the cache, including: client principal,
-     * service principal, source KDC realm, destination KDC realm and
-     * referral TGT.
+     * Add a new referral entry to the cache, including: service principal,
+     * source KDC realm, destination KDC realm and referral TGT.
      *
      * If a loop is generated when adding the new referral, the first hop is
      * automatically removed. For example, let's assume that adding a
@@ -93,17 +73,16 @@ final class ReferralsCache {
      * REALM-1.COM -> REALM-2.COM -> REALM-3.COM -> REALM-1.COM. Then,
      * REALM-1.COM -> REALM-2.COM referral entry is removed from the cache.
      */
-    static synchronized void put(PrincipalName cname, PrincipalName service,
+    static synchronized void put(PrincipalName service,
             String fromRealm, String toRealm, Credentials creds) {
-        ReferralCacheKey k = new ReferralCacheKey(cname, service);
-        pruneExpired(k);
+        pruneExpired(service);
         if (creds.getEndTime().before(new Date())) {
             return;
         }
-        Map<String, ReferralCacheEntry> entries = referralsMap.get(k);
+        Map<String, ReferralCacheEntry> entries = referralsMap.get(service);
         if (entries == null) {
             entries = new HashMap<String, ReferralCacheEntry>();
-            referralsMap.put(k, entries);
+            referralsMap.put(service, entries);
         }
         entries.remove(fromRealm);
         ReferralCacheEntry newEntry = new ReferralCacheEntry(creds, toRealm);
@@ -124,14 +103,13 @@ final class ReferralsCache {
     }
 
     /*
-     * Obtain a referral entry from the cache given a client principal,
-     * service principal and a source KDC realm.
+     * Obtain a referral entry from the cache given a service principal and a
+     * source KDC realm.
      */
-    static synchronized ReferralCacheEntry get(PrincipalName cname,
-            PrincipalName service, String fromRealm) {
-        ReferralCacheKey k = new ReferralCacheKey(cname, service);
-        pruneExpired(k);
-        Map<String, ReferralCacheEntry> entries = referralsMap.get(k);
+    static synchronized ReferralCacheEntry get(PrincipalName service,
+            String fromRealm) {
+        pruneExpired(service);
+        Map<String, ReferralCacheEntry> entries = referralsMap.get(service);
         if (entries != null) {
             ReferralCacheEntry toRef = entries.get(fromRealm);
             if (toRef != null) {
@@ -144,9 +122,9 @@ final class ReferralsCache {
     /*
      * Remove referral entries from the cache when referral TGTs expire.
      */
-    private static void pruneExpired(ReferralCacheKey k) {
+    private static void pruneExpired(PrincipalName service) {
         Date now = new Date();
-        Map<String, ReferralCacheEntry> entries = referralsMap.get(k);
+        Map<String, ReferralCacheEntry> entries = referralsMap.get(service);
         if (entries != null) {
             for (Entry<String, ReferralCacheEntry> mapEntry :
                     entries.entrySet()) {

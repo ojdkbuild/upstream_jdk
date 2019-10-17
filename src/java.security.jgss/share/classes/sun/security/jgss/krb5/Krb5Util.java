@@ -60,11 +60,8 @@ public class Krb5Util {
     /**
      * Retrieves the ticket corresponding to the client/server principal
      * pair from the Subject in the specified AccessControlContext.
-     * If the ticket can not be found in the Subject, and if
-     * useSubjectCredsOnly is false, then obtain ticket from
-     * a LoginContext.
      */
-    static KerberosTicket getTicket(GSSCaller caller,
+    static KerberosTicket getServiceTicket(GSSCaller caller,
         String clientPrincipal, String serverPrincipal,
         AccessControlContext acc) throws LoginException {
 
@@ -74,11 +71,31 @@ public class Krb5Util {
             SubjectComber.find(accSubj, serverPrincipal, clientPrincipal,
                   KerberosTicket.class);
 
+        return ticket;
+    }
+
+    /**
+     * Retrieves the initial TGT corresponding to the client principal
+     * from the Subject in the specified AccessControlContext.
+     * If the ticket can not be found in the Subject, and if
+     * useSubjectCredsOnly is false, then obtain ticket from
+     * a LoginContext.
+     */
+    static KerberosTicket getInitialTicket(GSSCaller caller,
+            String clientPrincipal,
+            AccessControlContext acc) throws LoginException {
+
+        // Try to get ticket from acc's Subject
+        Subject accSubj = Subject.getSubject(acc);
+        KerberosTicket ticket =
+                SubjectComber.find(accSubj, null, clientPrincipal,
+                        KerberosTicket.class);
+
         // Try to get ticket from Subject obtained from GSSUtil
         if (ticket == null && !GSSUtil.useSubjectCredsOnly(caller)) {
             Subject subject = GSSUtil.login(caller, GSSUtil.GSS_KRB5_MECH_OID);
             ticket = SubjectComber.find(subject,
-                serverPrincipal, clientPrincipal, KerberosTicket.class);
+                    null, clientPrincipal, KerberosTicket.class);
         }
         return ticket;
     }
@@ -132,7 +149,7 @@ public class Krb5Util {
 
     public static KerberosTicket credsToTicket(Credentials serviceCreds) {
         EncryptionKey sessionKey =  serviceCreds.getSessionKey();
-        KerberosTicket kt = new KerberosTicket(
+        return new KerberosTicket(
             serviceCreds.getEncoded(),
             new KerberosPrincipal(serviceCreds.getClient().getName()),
             new KerberosPrincipal(serviceCreds.getServer().getName(),
@@ -145,35 +162,14 @@ public class Krb5Util {
             serviceCreds.getEndTime(),
             serviceCreds.getRenewTill(),
             serviceCreds.getClientAddresses());
-        PrincipalName clientAlias = serviceCreds.getClientAlias();
-        PrincipalName serverAlias = serviceCreds.getServerAlias();
-        if (clientAlias != null) {
-            KerberosSecrets.getJavaxSecurityAuthKerberosAccess()
-                    .kerberosTicketSetClientAlias(kt, new KerberosPrincipal(
-                            clientAlias.getName(), clientAlias.getNameType()));
-        }
-        if (serverAlias != null) {
-            KerberosSecrets.getJavaxSecurityAuthKerberosAccess()
-                    .kerberosTicketSetServerAlias(kt, new KerberosPrincipal(
-                            serverAlias.getName(), serverAlias.getNameType()));
-        }
-        return kt;
     };
 
     public static Credentials ticketToCreds(KerberosTicket kerbTicket)
             throws KrbException, IOException {
-        KerberosPrincipal clientAlias = KerberosSecrets
-                .getJavaxSecurityAuthKerberosAccess()
-                .kerberosTicketGetClientAlias(kerbTicket);
-        KerberosPrincipal serverAlias = KerberosSecrets
-                .getJavaxSecurityAuthKerberosAccess()
-                .kerberosTicketGetServerAlias(kerbTicket);
         return new Credentials(
             kerbTicket.getEncoded(),
             kerbTicket.getClient().getName(),
-            (clientAlias != null ? clientAlias.getName() : null),
             kerbTicket.getServer().getName(),
-            (serverAlias != null ? serverAlias.getName() : null),
             kerbTicket.getSessionKey().getEncoded(),
             kerbTicket.getSessionKeyType(),
             kerbTicket.getFlags(),

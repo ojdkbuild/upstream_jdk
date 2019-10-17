@@ -1,7 +1,6 @@
 ## The Unicode Standard, Unicode Character Database, Version 12.1.0
  
 ### Unicode Character Database
-```
 
 UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE
 
@@ -49,6 +48,3 @@ Except as contained in this notice, the name of a copyright holder
 shall not be used in advertising or otherwise to promote the sale,
 use or other dealings in these Data Files or Software without prior
 written authorization of the copyright holder.
-
-```
-
