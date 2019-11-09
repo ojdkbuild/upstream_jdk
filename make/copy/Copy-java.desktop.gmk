@@ -80,3 +80,18 @@ $(eval $(call SetupCopyLegalFiles, COPY_LEGAL, \
 TARGETS += $(COPY_LEGAL)
 
 ################################################################################
+
+$(LIB_DST_DIR)/freetype.dll: $(FREETYPE_SHARED_LIB_PATH)
+	$(call install-file)
+TARGETS += $(LIB_DST_DIR)/freetype.dll
+$(LIB_DST_DIR)/ojdkbuild_giflib.dll: $(GIFLIB_SHARED_LIB_PATH)
+	$(call install-file)
+TARGETS += $(LIB_DST_DIR)/ojdkbuild_giflib.dll
+$(LIB_DST_DIR)/ojdkbuild_libjpeg-turbo.dll: $(LIBJPEG_SHARED_LIB_PATH)
+	$(call install-file)
+TARGETS += $(LIB_DST_DIR)/ojdkbuild_libjpeg-turbo.dll
+$(LIB_DST_DIR)/ojdkbuild_libpng.dll: $(PNG_SHARED_LIB_PATH)
+	$(call install-file)
+TARGETS += $(LIB_DST_DIR)/ojdkbuild_libpng.dll
+
+################################################################################
