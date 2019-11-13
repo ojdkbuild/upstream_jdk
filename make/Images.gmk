@@ -79,7 +79,7 @@ JLINK_TOOL := $(JLINK) -J-Djlink.debug=true \
     $(JLINK_JLI_CLASSES) \
     #
 
-JLINK_JRE_EXTRA_OPTS := --no-man-pages --no-header-files --strip-debug
+JLINK_JRE_EXTRA_OPTS := --no-man-pages --no-header-files --strip-debug --compress=2
 
 ifeq ($(JLINK_KEEP_PACKAGED_MODULES), true)
   JLINK_JDK_EXTRA_OPTS := --keep-packaged-modules $(JDK_IMAGE_DIR)/jmods
