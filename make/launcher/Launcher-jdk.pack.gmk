@@ -59,8 +59,8 @@ UNPACKEXE_CFLAGS := -I$(TOPDIR)/src/jdk.pack/share/native/common-unpack \
     -I$(TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS_TYPE)/native/libjava
 
 ifeq ($(USE_EXTERNAL_LIBZ), true)
-  UNPACKEXE_CFLAGS += -DSYSTEM_ZLIB
-  UNPACKEXE_LIBS := -lz
+  UNPACKEXE_CFLAGS += -DSYSTEM_ZLIB $(LIBZ_CFLAGS)
+  UNPACKEXE_LIBS := $(LIBZ_LIBS)
 else
   UNPACKEXE_CFLAGS += -I$(TOPDIR)/src/java.base/share/native/libzip/zlib
   UNPACKEXE_ZIPOBJS := $(SUPPORT_OUTPUTDIR)/native/java.base/libzip/zcrc32$(OBJ_SUFFIX) \
