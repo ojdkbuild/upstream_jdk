@@ -99,12 +99,6 @@ AC_DEFUN_ONCE([LIB_SETUP_FREETYPE],
   FREETYPE_BASE_NAME=freetype
   FREETYPE_CFLAGS=
   FREETYPE_LIBS=
-  FREETYPE_CFLAGS=`pkg-config freetype --cflags --msvc-syntax`
-  FREETYPE_LIBS=`pkg-config freetype --libs --msvc-syntax`
-  FREETYPE_TO_USE=system
-  AC_MSG_CHECKING([for which freetype to use])
-  AC_MSG_RESULT(ojdkbuild)
-  if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
 
   if (test "x$with_freetype_include" = "x"  && test "x$with_freetype_lib" != "x") || \
      (test "x$with_freetype_include" != "x"  && test "x$with_freetype_lib" = "x"); then
@@ -229,7 +223,6 @@ AC_DEFUN_ONCE([LIB_SETUP_FREETYPE],
     AC_MSG_RESULT([Using freetype: $FREETYPE_TO_USE])
 
 
-  fi
   AC_SUBST(FREETYPE_TO_USE)
   AC_SUBST(FREETYPE_CFLAGS)
   AC_SUBST(FREETYPE_LIBS)
