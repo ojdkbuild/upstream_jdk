@@ -52,7 +52,6 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBJPEG],
   USE_EXTERNAL_LIBJPEG=true
   LIBJPEG_CFLAGS=`pkg-config ojdkbuild_libjpeg-turbo --cflags --msvc-syntax`
   LIBJPEG_LIBS=`pkg-config ojdkbuild_libjpeg-turbo --libs --msvc-syntax`
-  LIBJPEG_SHARED_LIB_PATH=`pkg-config ojdkbuild_libjpeg-turbo --variable=shared_lib_path`
   AC_MSG_CHECKING([for which libjpeg to use])
   AC_MSG_RESULT(ojdkbuild)
   if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
@@ -83,7 +82,6 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBJPEG],
   AC_SUBST(USE_EXTERNAL_LIBJPEG)
   AC_SUBST(LIBJPEG_CFLAGS)
   AC_SUBST(LIBJPEG_LIBS)
-  AC_SUBST(LIBJPEG_SHARED_LIB_PATH)
 ])
 
 ################################################################################
@@ -96,7 +94,6 @@ AC_DEFUN_ONCE([LIB_SETUP_GIFLIB],
   USE_EXTERNAL_LIBGIF=true
   GIFLIB_CFLAGS=`pkg-config ojdkbuild_giflib --cflags --msvc-syntax`
   GIFLIB_LIBS=`pkg-config ojdkbuild_giflib --libs --msvc-syntax`
-  GIFLIB_SHARED_LIB_PATH=`pkg-config ojdkbuild_giflib --variable=shared_lib_path`
   AC_MSG_CHECKING([for which giflib to use])
   AC_MSG_RESULT(ojdkbuild)
   if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
@@ -127,7 +124,6 @@ AC_DEFUN_ONCE([LIB_SETUP_GIFLIB],
   AC_SUBST(USE_EXTERNAL_LIBGIF)
   AC_SUBST(GIFLIB_CFLAGS)
   AC_SUBST(GIFLIB_LIBS)
-  AC_SUBST(GIFLIB_SHARED_LIB_PATH)
 ])
 
 ################################################################################
@@ -140,7 +136,6 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBPNG],
   USE_EXTERNAL_LIBPNG=true
   PNG_CFLAGS=`pkg-config ojdkbuild_libpng --cflags --msvc-syntax`
   PNG_LIBS=`pkg-config ojdkbuild_libpng --libs --msvc-syntax`
-  PNG_SHARED_LIB_PATH=`pkg-config ojdkbuild_libpng --variable=shared_lib_path`
   AC_MSG_CHECKING([for which libpng to use])
   AC_MSG_RESULT(ojdkbuild)
   if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
@@ -177,7 +172,6 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBPNG],
   AC_SUBST(USE_EXTERNAL_LIBPNG)
   AC_SUBST(PNG_CFLAGS)
   AC_SUBST(PNG_LIBS)
-  AC_SUBST(PNG_SHARED_LIB_PATH)
 ])
 
 ################################################################################
@@ -190,6 +184,7 @@ AC_DEFUN_ONCE([LIB_SETUP_ZLIB],
   USE_EXTERNAL_LIBZ=true
   LIBZ_CFLAGS=`pkg-config ojdkbuild_zlib --cflags --msvc-syntax`
   LIBZ_LIBS_MD=`pkg-config ojdkbuild_zlib_md --libs --msvc-syntax`
+  LIBZ_LIBS_MT=`pkg-config ojdkbuild_zlib_mt --libs --msvc-syntax`
   AC_MSG_CHECKING([for which zlib to use])
   AC_MSG_RESULT(ojdkbuild)
   if (test "ojdkbuild_skip" != "ojdkbuild_skip" ); then
@@ -262,6 +257,7 @@ AC_DEFUN_ONCE([LIB_SETUP_ZLIB],
   AC_SUBST(LIBZ_CFLAGS)
   AC_SUBST(LIBZ_LIBS)
   AC_SUBST(LIBZ_LIBS_MD)
+  AC_SUBST(LIBZ_LIBS_MT)
 ])
 
 ################################################################################
