@@ -150,7 +150,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBZIP, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LIBS_unix := -ljvm -ljava $(LIBZ_LIBS), \
-    LIBS_windows := jvm.lib $(WIN_JAVA_LIB), \
+    LIBS_windows := jvm.lib $(WIN_JAVA_LIB) $(LIBZ_LIBS), \
 ))
 
 $(BUILD_LIBZIP): $(BUILD_LIBJAVA)
@@ -224,7 +224,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJLI, \
     LIBS_solaris := $(LIBDL), \
     LIBS_aix := $(LIBDL),\
     LIBS_macosx := -framework Cocoa -framework Security -framework ApplicationServices, \
-    LIBS_windows := advapi32.lib comctl32.lib user32.lib, \
+    LIBS_windows := advapi32.lib comctl32.lib user32.lib $(LIBZ_LIBS), \
 ))
 
 TARGETS += $(BUILD_LIBJLI)
