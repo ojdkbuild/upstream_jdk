@@ -1040,7 +1040,7 @@ mac-bundles: mac-jdk-bundle
 product-images: jdk-image symbols-image exploded-image
 
 # This target builds the legacy images, e.g. the legacy JRE image
-legacy-images: legacy-jre-image
+product-images: legacy-jre-image
 
 # zip-security is actually a bundle, but for now it needs to be considered
 # an image until this can be cleaned up properly.
