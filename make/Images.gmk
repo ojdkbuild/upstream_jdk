@@ -45,6 +45,7 @@ $(eval $(call ReadImportMetaData))
 
 JRE_MODULES += $(filter $(ALL_MODULES), $(BOOT_MODULES) \
     $(PLATFORM_MODULES) $(JRE_TOOL_MODULES))
+JRE_MODULES += jdk.attach jdk.jconsole jdk.internal.jvmstat
 JDK_MODULES += $(ALL_MODULES)
 
 JRE_MODULES_LIST := $(call CommaList, $(JRE_MODULES))
@@ -79,7 +80,7 @@ JLINK_TOOL := $(JLINK) -J-Djlink.debug=true \
     $(JLINK_JLI_CLASSES) \
     #
 
-JLINK_JRE_EXTRA_OPTS := --no-man-pages --no-header-files --strip-debug
+JLINK_JRE_EXTRA_OPTS := --no-man-pages --no-header-files --strip-debug --compress=2
 
 ifeq ($(JLINK_KEEP_PACKAGED_MODULES), true)
   JLINK_JDK_EXTRA_OPTS := --keep-packaged-modules $(JDK_IMAGE_DIR)/jmods
