@@ -132,7 +132,7 @@ class ReferenceToRootClosure : public StackObj {
 bool ReferenceToRootClosure::do_cldg_roots() {
   assert(!complete(), "invariant");
   ReferenceLocateClosure rlc(_callback, OldObjectRoot::_class_loader_data, OldObjectRoot::_type_undetermined, NULL);
-  CLDToOopClosure cldt_closure(&rlc, ClassLoaderData::_claim_none);
+  CLDToOopClosure cldt_closure(&rlc, ClassLoaderData::_claim_strong);
   ClassLoaderDataGraph::always_strong_cld_do(&cldt_closure);
   return rlc.complete();
 }
@@ -435,6 +435,9 @@ class RootResolverMarkScope : public MarkScope {
 };
 
 void RootResolver::resolve(RootCallback& callback) {
+
+  // Need to clear cld claim bit before starting
+  ClassLoaderDataGraph::clear_claimed_marks();
   RootResolverMarkScope mark_scope;
 
   // thread local roots

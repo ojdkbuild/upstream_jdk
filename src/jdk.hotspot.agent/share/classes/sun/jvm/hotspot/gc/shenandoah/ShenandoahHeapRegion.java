@@ -184,10 +184,10 @@ public class ShenandoahHeapRegion extends ContiguousSpace implements LiveRegions
                 if (regionStart == null) {
                     regionStart = start;
                 } else {
-                    regionEnd = start.addOffsetTo(size);
+                    regionEnd = start.addOffsetTo(heap.oopOffset() + size);
                 }
             }
-            start = start.addOffsetTo(size);
+            start = start.addOffsetTo(heap.oopOffset() + size);
         }
 
         if (regionStart != null) {
@@ -201,13 +201,15 @@ public class ShenandoahHeapRegion extends ContiguousSpace implements LiveRegions
     }
 
     private boolean hasForwardee(Address rawPtr) {
-        // Forwarding pointer is stored in mark word when it is flagged "marked"
+        // Use Mark as a helper to read forward pointer value.
         Mark mark = new Mark(rawPtr);
-        return mark.isMarked();
+        Address forwardee = mark.valueAsAddress();
+        return (forwardee != rawPtr.addOffsetTo(heap.oopOffset()));
     }
 
     private long getObjectSize(Address rawPtr) {
-        OopHandle handle = rawPtr.addOffsetToAsOopHandle(0);
+        // Dealing with a raw pointer, offsets forward pointer to find real Oop.
+        OopHandle handle = rawPtr.addOffsetToAsOopHandle(heap.oopOffset());
         Oop obj = null;
 
         try {

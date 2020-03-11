@@ -30,8 +30,7 @@ class ContinueOutsideSwitchExpression {
     int t(int i) {
         OUT: while (true) {
             return switch (i) {
-                case 0: continue OUT;
-                default: yield 0;
+                default: continue OUT;
             };
         }
     }

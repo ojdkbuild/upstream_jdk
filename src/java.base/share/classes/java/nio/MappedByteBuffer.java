@@ -235,11 +235,8 @@ public abstract class MappedByteBuffer
      * is made.
      *
      * <p> If this buffer was not mapped in read/write mode ({@link
-     * java.nio.channels.FileChannel.MapMode#READ_WRITE}) then
-     * invoking this method may have no effect. In particular, the
-     * method has no effect for buffers mapped in read-only or private
-     * mapping modes. This method may or may not have an effect for
-     * implementation-specific mapping modes. </p>
+     * java.nio.channels.FileChannel.MapMode#READ_WRITE}) then invoking this
+     * method has no effect. </p>
      *
      * @return  This buffer
      */
@@ -274,10 +271,7 @@ public abstract class MappedByteBuffer
      *
      * <p> If this buffer was not mapped in read/write mode ({@link
      * java.nio.channels.FileChannel.MapMode#READ_WRITE}) then
-     * invoking this method may have no effect. In particular, the
-     * method has no effect for buffers mapped in read-only or private
-     * mapping modes. This method may or may not have an effect for
-     * implementation-specific mapping modes. </p>
+     * invoking this method has no effect. </p>
      *
      * @param index
      *        The index of the first byte in the buffer region that is

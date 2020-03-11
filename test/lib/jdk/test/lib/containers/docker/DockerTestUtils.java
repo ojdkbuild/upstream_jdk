@@ -37,7 +37,6 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import jdk.test.lib.Container;
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
@@ -54,6 +53,11 @@ public class DockerTestUtils {
     // in JT harness trimming the output, and can lead to loss of useful
     // diagnostic information.
     private static final int MAX_LINES_TO_COPY_FOR_CHILD_STDOUT = 100;
+
+    // Use this property to specify docker location on your system.
+    // E.g.: "/usr/local/bin/docker".
+    private static final String DOCKER_COMMAND =
+        System.getProperty("jdk.test.docker.command", "docker");
 
     // Set this property to true to retain image after test. By default
     // images are removed after test execution completes.
@@ -112,7 +116,7 @@ public class DockerTestUtils {
      */
     private static boolean isDockerEngineAvailableCheck() throws Exception {
         try {
-            execute(Container.ENGINE_COMMAND, "ps")
+            execute(DOCKER_COMMAND, "ps")
                 .shouldHaveExitValue(0)
                 .shouldContain("CONTAINER")
                 .shouldContain("IMAGE");
@@ -175,8 +179,9 @@ public class DockerTestUtils {
                            DockerfileConfig.getBaseImageVersion());
         try {
             // Build the docker
-            execute(Container.ENGINE_COMMAND, "build", "--no-cache", "--tag", imageName, buildDir.toString())
-                .shouldHaveExitValue(0);
+            execute(DOCKER_COMMAND, "build", "--no-cache", "--tag", imageName, buildDir.toString())
+                .shouldHaveExitValue(0)
+                .shouldContain("Successfully built");
         } catch (Exception e) {
             // If docker image building fails there is a good chance it happens due to environment and/or
             // configuration other than product failure. Throw jtreg skipped exception in such case
@@ -197,7 +202,7 @@ public class DockerTestUtils {
     public static List<String> buildJavaCommand(DockerRunOptions opts) throws Exception {
         List<String> cmd = new ArrayList<>();
 
-        cmd.add(Container.ENGINE_COMMAND);
+        cmd.add(DOCKER_COMMAND);
         cmd.add("run");
         if (opts.tty)
             cmd.add("--tty=true");
@@ -239,7 +244,7 @@ public class DockerTestUtils {
      * @throws Exception
      */
     public static void removeDockerImage(String imageNameAndTag) throws Exception {
-            execute(Container.ENGINE_COMMAND, "rmi", "--force", imageNameAndTag);
+            execute(DOCKER_COMMAND, "rmi", "--force", imageNameAndTag);
     }
 
 

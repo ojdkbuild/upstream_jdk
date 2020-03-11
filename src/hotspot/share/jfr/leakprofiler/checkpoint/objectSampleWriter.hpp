@@ -30,17 +30,21 @@
 class Edge;
 class EdgeStore;
 class JfrCheckpointWriter;
-class StoredEdge;
+class RoutableEdge;
 
 class ObjectSampleWriter : public StackObj {
  private:
   JfrCheckpointWriter& _writer;
-  EdgeStore* const _store;
-  void write(const StoredEdge* edge);
+  const EdgeStore* const _store;
+
+  void write(const RoutableEdge* edge);
+  void write_chain(const RoutableEdge& edge);
+
  public:
-  ObjectSampleWriter(JfrCheckpointWriter& writer, EdgeStore* store);
+  ObjectSampleWriter(JfrCheckpointWriter& writer, const EdgeStore* store);
   ~ObjectSampleWriter();
-  bool operator()(StoredEdge& edge);
+
+  bool operator()(const RoutableEdge& edge);
 };
 
 #endif // SHARE_JFR_LEAKPROFILER_CHECKPOINT_OBJECTSAMPLEWRITER_HPP

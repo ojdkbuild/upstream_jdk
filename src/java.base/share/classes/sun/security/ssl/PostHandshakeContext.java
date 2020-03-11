@@ -54,7 +54,6 @@ final class PostHandshakeContext extends HandshakeContext {
 
         handshakeConsumers = new LinkedHashMap<>(consumers);
         handshakeFinished = true;
-        handshakeSession = context.conSession;
     }
 
     @Override
@@ -82,10 +81,5 @@ final class PostHandshakeContext extends HandshakeContext {
                     "Illegal handshake message: " +
                     SSLHandshake.nameOf(handshakeType), be);
         }
-    }
-
-    // Finish this PostHandshake event
-    void finish() {
-        handshakeSession = null;
     }
 }

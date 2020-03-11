@@ -482,7 +482,7 @@ final class Finished {
                 shc.conContext.inputRecord.expectingFinishFlight();
             } else {
                 if (shc.handshakeSession.isRejoinable() &&
-                        !shc.handshakeSession.isStatelessable(shc)) {
+                        !shc.statelessResumption) {
                     ((SSLSessionContextImpl)shc.sslContext.
                         engineGetServerSessionContext()).put(
                             shc.handshakeSession);
@@ -846,8 +846,6 @@ final class Finished {
             if (shc.conContext.secureRenegotiation) {
                 shc.conContext.serverVerifyData = fm.verifyData;
             }
-
-            shc.conContext.conSession = shc.handshakeSession.finish();
 
             // update the context
             shc.handshakeConsumers.put(

@@ -463,7 +463,17 @@ class Method : public Metadata {
   address verified_code_entry();
   bool check_code() const;      // Not inline to avoid circular ref
   CompiledMethod* volatile code() const;
-  void clear_code(bool acquire_lock = true);    // Clear out any compiled code
+
+  // Locks CompiledMethod_lock if not held.
+  void unlink_code(CompiledMethod *compare);
+  // Locks CompiledMethod_lock if not held.
+  void unlink_code();
+
+private:
+  // Either called with CompiledMethod_lock held or from constructor.
+  void clear_code();
+
+public:
   static void set_code(const methodHandle& mh, CompiledMethod* code);
   void set_adapter_entry(AdapterHandlerEntry* adapter) {
     constMethod()->set_adapter_entry(adapter);
@@ -481,7 +491,6 @@ class Method : public Metadata {
   address get_i2c_entry();
   address get_c2i_entry();
   address get_c2i_unverified_entry();
-  address get_c2i_no_clinit_check_entry();
   AdapterHandlerEntry* adapter() const {
     return constMethod()->adapter();
   }

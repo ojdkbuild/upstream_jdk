@@ -62,96 +62,37 @@
     <div class="centered" role="banner">
       <xsl:apply-templates select="title"/>
     </div>
-    <nav>
-      <ul>
-        <li>
-          <a href="#SpecificationIntro"><b>Introduction</b></a>
-          <ul>
-            <xsl:for-each select="intro">
-              <li>
-                <a>
-                  <xsl:attribute name="href">#<xsl:value-of select="@id"/>
-                  </xsl:attribute>
-                  <b><xsl:value-of select="@label"/></b>
-                </a>
-              </li>
-            </xsl:for-each>
-          </ul>
-        </li>
-        <li>
-          <a href="#FunctionSection"><b>Functions</b></a>
-          <ul>
-            <xsl:for-each select="functionsection/intro">
-              <li>
-                <a>
-                  <xsl:attribute name="href">#<xsl:value-of select="@id"/>
-                  </xsl:attribute>
-                  <b><xsl:value-of select="@label"/></b>
-                </a>
-              </li>
-            </xsl:for-each>
-            <li>
-              <a href="#FunctionIndex"><b>Function Index</b></a>
-              <ul>
-                <xsl:for-each select="functionsection/category">
-                  <li>
-                    <a>
-                      <xsl:attribute name="href">#<xsl:value-of select="@id"/>
-                      </xsl:attribute>
-                      <b><xsl:value-of select="@label"/></b>
-                    </a>
-                  </li>
-                </xsl:for-each>
-              </ul>
-            </li>
-            <li>
-              <a href="#ErrorSection"><b>Error Codes</b></a>
-            </li>
-          </ul>
-        </li>
-        <li>
-          <a href="#EventSection"><b>Events</b></a>
-          <ul>
-            <li>
-              <a href="#EventIndex"><b>Event Index</b></a>
-            </li>
-          </ul>
-        </li>
-        <li>
-          <a href="#DataSection"><b>Data Types</b></a>
-          <ul>
-            <xsl:for-each select="//basetypes">
+    <ul role="navigation">
+      <li>
+        <a href="#SpecificationIntro"><b>Introduction</b></a>
+        <ul>
+          <xsl:for-each select="intro">
             <li>
               <a>
-                <xsl:attribute name="href">#<xsl:value-of select="@id"/></xsl:attribute>
-                <b>
-                  <xsl:value-of select="@label"/>
-                </b>
+                <xsl:attribute name="href">#<xsl:value-of select="@id"/>
+                </xsl:attribute>
+                <b><xsl:value-of select="@label"/></b>
               </a>
             </li>
-            </xsl:for-each>
+          </xsl:for-each>
+        </ul>
+      </li>
+      <li>
+        <a href="#FunctionSection"><b>Functions</b></a>
+        <ul>
+          <xsl:for-each select="functionsection/intro">
             <li>
-              <a href="#StructureTypeDefinitions"><b>Structure Type Definitions</b></a>
+              <a>
+                <xsl:attribute name="href">#<xsl:value-of select="@id"/>
+                </xsl:attribute>
+                <b><xsl:value-of select="@label"/></b>
+              </a>
             </li>
-            <li>
-              <a href="#FunctionTypeDefinitions"><b>Function Type Definitions</b></a>
-            </li>
-            <li>
-              <a href="#EnumerationDefinitions"><b>Enumeration Definitions</b></a>
-            </li>
-            <li>
-              <a href="#FunctionTable"><b>Function Table</b></a>
-            </li>
-          </ul>
-        </li>
-        <li>
-          <a href="#ConstantIndex"><b>Constant Index</b></a>
-        </li>
-        <xsl:if test="$development = 'Show'">
+          </xsl:for-each>
           <li>
-            <a href="#SpecificationIssues"><b>Issues</b></a>
+            <a href="#FunctionIndex"><b>Function Index</b></a>
             <ul>
-              <xsl:for-each select="issuessection/intro">
+              <xsl:for-each select="functionsection/category">
                 <li>
                   <a>
                     <xsl:attribute name="href">#<xsl:value-of select="@id"/>
@@ -162,12 +103,69 @@
               </xsl:for-each>
             </ul>
           </li>
-        </xsl:if>
+          <li>
+            <a href="#ErrorSection"><b>Error Codes</b></a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#EventSection"><b>Events</b></a>
+        <ul>
+          <li>
+            <a href="#EventIndex"><b>Event Index</b></a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#DataSection"><b>Data Types</b></a>
+        <ul>
+          <xsl:for-each select="//basetypes">
+          <li>
+            <a>
+              <xsl:attribute name="href">#<xsl:value-of select="@id"/></xsl:attribute>
+              <b>
+                <xsl:value-of select="@label"/>
+              </b>
+            </a>
+          </li>
+          </xsl:for-each>
+          <li>
+            <a href="#StructureTypeDefinitions"><b>Structure Type Definitions</b></a>
+          </li>
+          <li>
+            <a href="#FunctionTypeDefinitions"><b>Function Type Definitions</b></a>
+          </li>
+          <li>
+            <a href="#EnumerationDefinitions"><b>Enumeration Definitions</b></a>
+          </li>
+          <li>
+            <a href="#FunctionTable"><b>Function Table</b></a>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <a href="#ConstantIndex"><b>Constant Index</b></a>
+      </li>
+      <xsl:if test="$development = 'Show'">
         <li>
-          <a href="#ChangeHistory"><b>Change History</b></a>
+          <a href="#SpecificationIssues"><b>Issues</b></a>
+          <ul>
+            <xsl:for-each select="issuessection/intro">
+              <li>
+                <a>
+                  <xsl:attribute name="href">#<xsl:value-of select="@id"/>
+                  </xsl:attribute>
+                  <b><xsl:value-of select="@label"/></b>
+                </a>
+              </li>
+            </xsl:for-each>
+          </ul>
         </li>
-      </ul>
-    </nav>
+      </xsl:if>
+      <li>
+        <a href="#ChangeHistory"><b>Change History</b></a>
+      </li>
+    </ul>
     <!-- end table of contents, begin body -->
     <div role="main">
     <div class="sep"/>
@@ -214,11 +212,11 @@
     <h1>
       <xsl:apply-templates/>
     </h1>
-    <h2>
+    <h3>
       <xsl:value-of select="@subtitle"/>
       <xsl:text> </xsl:text>
       <xsl:call-template name="showbasicversion"/>
-    </h2>
+    </h3>
 </xsl:template>
 
 <xsl:template match="functionsection">
@@ -365,7 +363,7 @@
       </td>
     </tr>
     <tr>
-      <td>
+      <td >
         <xsl:apply-templates select="." mode="phaseinfo"/>
       </td>
       <td>
@@ -644,12 +642,12 @@ typedef struct {
 </xsl:template>
 
 <xsl:template match="capabilitiestypedef|typedef|uniontypedef">
-  <h3>
+  <h4>
     <xsl:attribute name="id">
       <xsl:value-of select="@id"/>
     </xsl:attribute>
     <xsl:value-of select="@label"/>
-  </h3>
+  </h4>
   <xsl:apply-templates select="." mode="description"/>
   <blockquote>
     <xsl:apply-templates select="." mode="code"/>
@@ -1953,12 +1951,12 @@ typedef struct {
   <xsl:if test="@id!=''">
     <xsl:choose>
       <xsl:when test="@label!=''">
-        <h3>
+        <h4>
           <xsl:attribute name="id">
             <xsl:value-of select="@id"/>
           </xsl:attribute>
           <xsl:value-of select="@label"/>
-        </h3>
+        </h4>
       </xsl:when>
       <xsl:otherwise>
         <a>

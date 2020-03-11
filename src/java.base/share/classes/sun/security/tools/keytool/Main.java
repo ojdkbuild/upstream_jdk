@@ -2418,9 +2418,9 @@ public final class Main {
         out.println(form.format(source));
         out.println();
 
-        List<String> aliases = Collections.list(keyStore.aliases());
-        aliases.sort(String::compareTo);
-        for (String alias : aliases) {
+        for (Enumeration<String> e = keyStore.aliases();
+                                        e.hasMoreElements(); ) {
+            String alias = e.nextElement();
             doPrintEntry("<" + alias + ">", alias, out);
             if (verbose || rfc) {
                 out.println(rb.getString("NEWLINE"));

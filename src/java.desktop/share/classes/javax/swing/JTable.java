@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -5278,8 +5278,7 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                 // Don't start when just a modifier is pressed
                 int code = e.getKeyCode();
                 if (code == KeyEvent.VK_SHIFT || code == KeyEvent.VK_CONTROL ||
-                    code == KeyEvent.VK_ALT || code == KeyEvent.VK_META ||
-                    code == KeyEvent.VK_ALT_GRAPH) {
+                    code == KeyEvent.VK_ALT) {
                     return false;
                 }
                 // Try to install the editor
@@ -5303,9 +5302,7 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                 // If we have started an editor as a result of the user
                 // pressing a key and the surrendersFocusOnKeystroke property
                 // is true, give the focus to the new editor.
-                Object prop = getClientProperty("JTable.forceAutoStartsEdit");
-                if (getSurrendersFocusOnKeystroke()
-                        || Boolean.TRUE.equals(prop)) {
+                if (getSurrendersFocusOnKeystroke()) {
                     editorComponent.requestFocus();
                 }
             }
@@ -6671,7 +6668,6 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
          */
         protected AccessibleJTable() {
             super();
-            JTable.this.putClientProperty("JTable.forceAutoStartsEdit", true);
             JTable.this.addPropertyChangeListener(this);
             JTable.this.getSelectionModel().addListSelectionListener(this);
             TableColumnModel tcm = JTable.this.getColumnModel();
@@ -7108,12 +7104,15 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
             int row = rowAtPoint(p);
 
             if ((column != -1) && (row != -1)) {
-                if (row == getEditingRow() && column == getEditingColumn()) {
-                    Component editor = getEditorComponent();
-                    if (editor instanceof Accessible) {
-                        return (Accessible) editor;
-                    }
+                TableColumn aColumn = getColumnModel().getColumn(column);
+                TableCellRenderer renderer = aColumn.getCellRenderer();
+                if (renderer == null) {
+                    Class<?> columnClass = getColumnClass(column);
+                    renderer = getDefaultRenderer(columnClass);
                 }
+                Component component = renderer.getTableCellRendererComponent(
+                                  JTable.this, null, false, false,
+                                  row, column);
                 return new AccessibleJTableCell(JTable.this, row, column,
                       getAccessibleIndexAt(row, column));
             }
@@ -7146,12 +7145,15 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                 int column = getAccessibleColumnAtIndex(i);
                 int row = getAccessibleRowAtIndex(i);
 
-                if (row == getEditingRow() && column == getEditingColumn()) {
-                    Component editor = getEditorComponent();
-                    if (editor instanceof Accessible) {
-                        return (Accessible) editor;
-                    }
+                TableColumn aColumn = getColumnModel().getColumn(column);
+                TableCellRenderer renderer = aColumn.getCellRenderer();
+                if (renderer == null) {
+                    Class<?> columnClass = getColumnClass(column);
+                    renderer = getDefaultRenderer(columnClass);
                 }
+                Component component = renderer.getTableCellRendererComponent(
+                                  JTable.this, null, false, false,
+                                  row, column);
                 return new AccessibleJTableCell(JTable.this, row, column,
                       getAccessibleIndexAt(row, column));
             }

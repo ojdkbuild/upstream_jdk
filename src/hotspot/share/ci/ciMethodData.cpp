@@ -81,13 +81,13 @@ ciMethodData::ciMethodData() : ciMetadata(NULL) {
 // Check for entries that reference an unloaded method
 class PrepareExtraDataClosure : public CleanExtraDataClosure {
   MethodData*            _mdo;
-  SafepointStateTracker  _safepoint_tracker;
+  uint64_t               _safepoint_counter;
   GrowableArray<Method*> _uncached_methods;
 
 public:
   PrepareExtraDataClosure(MethodData* mdo)
     : _mdo(mdo),
-      _safepoint_tracker(SafepointSynchronize::safepoint_state_tracker()),
+      _safepoint_counter(SafepointSynchronize::safepoint_counter()),
       _uncached_methods()
   { }
 
@@ -103,7 +103,7 @@ public:
   }
 
   bool has_safepointed() {
-    return _safepoint_tracker.safepoint_state_changed();
+    return SafepointSynchronize::safepoint_counter() != _safepoint_counter;
   }
 
   bool finish() {

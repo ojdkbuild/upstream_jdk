@@ -113,7 +113,9 @@ class JfrThreadLocal {
     _stackframes = frames;
   }
 
-  u4 stackdepth() const;
+  u4 stackdepth() const {
+    return _stackdepth;
+  }
 
   void set_stackdepth(u4 depth) {
     _stackdepth = depth;

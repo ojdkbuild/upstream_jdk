@@ -275,6 +275,8 @@ public final class FrameStateBuilder implements SideEffectsState {
         clearNonLiveLocals = other.clearNonLiveLocals;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
+        assert locals.length == code.getMaxLocals();
+        assert stack.length == Math.max(1, code.getMaxStackSize());
         assert lockedObjects.length == monitorIds.length;
     }
 
@@ -789,7 +791,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     public ValueNode pop(JavaKind slotKind) {
         if (slotKind.needsTwoSlots()) {
             ValueNode s = xpop();
-            assert s == TWO_SLOT_MARKER : s;
+            assert s == TWO_SLOT_MARKER;
         }
         ValueNode x = xpop();
         assert verifyKind(slotKind, x);
@@ -833,7 +835,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 /* Ignore second slot of two-slot value. */
                 x = xpop();
             }
-            assert x != null && x != TWO_SLOT_MARKER : x;
+            assert x != null && x != TWO_SLOT_MARKER;
             result[i] = x;
         }
         return result;

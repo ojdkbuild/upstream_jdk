@@ -29,7 +29,7 @@
 #include "oops/oopsHierarchy.hpp"
 
 class Edge {
- protected:
+ private:
   const Edge* _parent;
   const oop* _reference;
  public:

@@ -23,10 +23,9 @@
 
 /*
  * @test
- * @bug 8215694 8222987 8225257
+ * @bug 8215694 8222987
  * @summary keytool cannot generate RSASSA-PSS certificates
  * @library /test/lib
- * @build java.base/sun.security.rsa.RSAKeyPairGenerator
  * @modules java.base/sun.security.util
  *          java.base/sun.security.x509
  * @requires os.family != "solaris"
@@ -34,8 +33,7 @@
  */
 
 // This test is excluded from Solaris because the 8192-bit RSA key pair
-// generator is extremely slow there. Please note the fake
-// KeyPairGenerator will not be used because of provider preferences.
+// generator is extremely slow there.
 
 import jdk.test.lib.Asserts;
 import jdk.test.lib.SecurityTools;
@@ -95,9 +93,7 @@ public class PSS {
 
     static OutputAnalyzer genkeypair(String alias, String options)
             throws Exception {
-        String patchArg = "-J--patch-module=java.base=" + System.getProperty("test.classes")
-                + File.separator + "patches" + File.separator + "java.base";
-        return kt(patchArg + " -genkeypair -alias " + alias
+        return kt("-genkeypair -alias " + alias
                 + " -dname CN=" + alias + " " + options);
     }
 

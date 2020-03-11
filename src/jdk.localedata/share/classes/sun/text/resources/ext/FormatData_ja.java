@@ -97,10 +97,6 @@ public class FormatData_ja extends ParallelListResourceBundle {
             "\u6c11\u56fd\u524d",
             "\u6c11\u56fd",
         };
-        final String[] gregoryEras = {
-            "\u7d00\u5143\u524d",
-            "\u897f\u66a6",
-        };
         return new Object[][] {
             { "MonthNames",
                 new String[] {
@@ -175,8 +171,12 @@ public class FormatData_ja extends ParallelListResourceBundle {
                     "\u5348\u5f8c" // pm marker
                 }
             },
-            { "Eras", gregoryEras },
-            { "short.Eras", gregoryEras },
+            { "Eras",
+                new String[] { // era strings for GregorianCalendar
+                    "\u7d00\u5143\u524d",
+                    "\u897f\u66a6"
+                }
+            },
             { "buddhist.Eras",
                 new String[] { // era strings for Thai Buddhist calendar
                     "\u7d00\u5143\u524d", // Kigenzen

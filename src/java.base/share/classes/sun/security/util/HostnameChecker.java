@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -260,35 +260,28 @@ public class HostnameChecker {
      * The matching is performed as per RFC 2818 rules for TLS and
      * RFC 2830 rules for LDAP.<p>
      *
-     * The <code>name</code> parameter should represent a DNS name.  The
-     * <code>template</code> parameter may contain the wildcard character '*'.
+     * The <code>name</code> parameter should represent a DNS name.
+     * The <code>template</code> parameter
+     * may contain the wildcard character *
      */
     private boolean isMatched(String name, String template,
                               boolean chainsToPublicCA) {
 
         // Normalize to Unicode, because PSL is in Unicode.
-        try {
-            name = IDN.toUnicode(IDN.toASCII(name));
-            template = IDN.toUnicode(IDN.toASCII(template));
-        } catch (RuntimeException re) {
-            if (SSLLogger.isOn) {
-                SSLLogger.fine("Failed to normalize to Unicode: " + re);
-            }
+        name = IDN.toUnicode(IDN.toASCII(name));
+        template = IDN.toUnicode(IDN.toASCII(template));
 
-            return false;
-        }
-
-        if (hasIllegalWildcard(template, chainsToPublicCA)) {
+        if (hasIllegalWildcard(name, template, chainsToPublicCA)) {
             return false;
         }
 
         // check the validity of the domain name template.
         try {
-            // Replacing wildcard character '*' with 'z' so as to check
+            // Replacing wildcard character '*' with 'x' so as to check
             // the domain name template validity.
             //
             // Using the checking implemented in SNIHostName
-            new SNIHostName(template.replace('*', 'z'));
+            new SNIHostName(template.replace('*', 'x'));
         } catch (IllegalArgumentException iae) {
             // It would be nice to add debug log if not matching.
             return false;
@@ -306,8 +299,8 @@ public class HostnameChecker {
     /**
      * Returns true if the template contains an illegal wildcard character.
      */
-    private static boolean hasIllegalWildcard(
-            String template, boolean chainsToPublicCA) {
+    private static boolean hasIllegalWildcard(String domain, String template,
+                                              boolean chainsToPublicCA) {
         // not ok if it is a single wildcard character or "*."
         if (template.equals("*") || template.equals("*.")) {
             if (SSLLogger.isOn) {
@@ -338,29 +331,25 @@ public class HostnameChecker {
             return true;
         }
 
+        // If the wildcarded domain is a top-level domain under which names
+        // can be registered, then a wildcard is not allowed.
+
         if (!chainsToPublicCA) {
             return false; // skip check for non-public certificates
         }
+        Optional<RegisteredDomain> rd = RegisteredDomain.from(domain)
+                .filter(d -> d.type() == RegisteredDomain.Type.ICANN);
 
-        // If the wildcarded domain is a top-level domain under which names
-        // can be registered, then a wildcard is not allowed.
-        String wildcardedDomain = afterWildcard.substring(firstDotIndex + 1);
-        String templateDomainSuffix =
-                RegisteredDomain.from("z." + wildcardedDomain)
-                    .filter(d -> d.type() == RegisteredDomain.Type.ICANN)
-                    .map(RegisteredDomain::publicSuffix).orElse(null);
-        if (templateDomainSuffix == null) {
-            return false;   // skip check if not known public suffix
-        }
-
-        // Is it a top-level domain?
-        if (wildcardedDomain.equalsIgnoreCase(templateDomainSuffix)) {
-            if (SSLLogger.isOn) {
-                SSLLogger.fine(
-                    "Certificate domain name has illegal " +
-                    "wildcard for top-level public suffix: " + template);
+        if (rd.isPresent()) {
+            String wDomain = afterWildcard.substring(firstDotIndex + 1);
+            if (rd.get().publicSuffix().equalsIgnoreCase(wDomain)) {
+                if (SSLLogger.isOn) {
+                    SSLLogger.fine(
+                        "Certificate domain name has illegal " +
+                        "wildcard for public suffix: " + template);
+                }
+                return true;
             }
-            return true;
         }
 
         return false;

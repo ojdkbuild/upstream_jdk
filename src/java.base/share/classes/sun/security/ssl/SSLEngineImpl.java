@@ -344,12 +344,6 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
             hsStatus = tryKeyUpdate(hsStatus);
         }
 
-        // Check if NewSessionTicket PostHandshake message needs to be sent
-        if (conContext.conSession.updateNST &&
-                !conContext.sslConfig.isClientMode) {
-            hsStatus = tryNewSessionTicket(hsStatus);
-        }
-
         // update context status
         ciphertext.handshakeStatus = hsStatus;
 
@@ -397,29 +391,6 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                 SSLLogger.finest("trigger key update");
             }
             beginHandshake();
-            return conContext.getHandshakeStatus();
-        }
-
-        return currentHandshakeStatus;
-    }
-
-    // Try to generate a PostHandshake NewSessionTicket message.  This is
-    // TLS 1.3 only.
-    private HandshakeStatus tryNewSessionTicket(
-            HandshakeStatus currentHandshakeStatus) throws IOException {
-        // Don't bother to kickstart if handshaking is in progress, or if the
-        // connection is not duplex-open.
-        if ((conContext.handshakeContext == null) &&
-                conContext.protocolVersion.useTLS13PlusSpec() &&
-                !conContext.isOutboundClosed() &&
-                !conContext.isInboundClosed() &&
-                !conContext.isBroken) {
-            if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
-                SSLLogger.finest("trigger NST");
-            }
-            conContext.conSession.updateNST = false;
-            NewSessionTicket.kickstartProducer.produce(
-                    new PostHandshakeContext(conContext));
             return conContext.getHandshakeStatus();
         }
 

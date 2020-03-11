@@ -144,26 +144,16 @@ class CLDToOopClosure : public CLDClosure {
   void do_cld(ClassLoaderData* cld);
 };
 
-class ClaimMetadataVisitingOopIterateClosure : public OopIterateClosure {
- protected:
-  const int _claim;
-
+// The base class for all concurrent marking closures,
+// that participates in class unloading.
+// It's used to proxy through the metadata to the oops defined in them.
+class MetadataVisitingOopIterateClosure: public OopIterateClosure {
  public:
-  ClaimMetadataVisitingOopIterateClosure(int claim, ReferenceDiscoverer* rd = NULL) :
-      OopIterateClosure(rd),
-      _claim(claim) { }
+  MetadataVisitingOopIterateClosure(ReferenceDiscoverer* rd = NULL) : OopIterateClosure(rd) { }
 
   virtual bool do_metadata() { return true; }
   virtual void do_klass(Klass* k);
   virtual void do_cld(ClassLoaderData* cld);
-};
-
-// The base class for all concurrent marking closures,
-// that participates in class unloading.
-// It's used to proxy through the metadata to the oops defined in them.
-class MetadataVisitingOopIterateClosure: public ClaimMetadataVisitingOopIterateClosure {
- public:
-  MetadataVisitingOopIterateClosure(ReferenceDiscoverer* rd = NULL);
 };
 
 // ObjectClosure is used for iterating through an object space

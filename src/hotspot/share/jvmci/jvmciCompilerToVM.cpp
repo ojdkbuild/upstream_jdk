@@ -582,6 +582,12 @@ C2V_VMENTRY_NULL(jobject, lookupClass, (JNIEnv* env, jobject, jclass mirror))
   return JVMCIENV->get_jobject(result);
 }
 
+C2V_VMENTRY_NULL(jobject, resolveConstantInPool, (JNIEnv* env, jobject, jobject jvmci_constant_pool, jint index))
+  constantPoolHandle cp = JVMCIENV->asConstantPool(jvmci_constant_pool);
+  oop result = cp->resolve_constant_at(index, CHECK_NULL);
+  return JVMCIENV->get_jobject(JVMCIENV->get_object_constant(result));
+C2V_END
+
 C2V_VMENTRY_NULL(jobject, resolvePossiblyCachedConstantInPool, (JNIEnv* env, jobject, jobject jvmci_constant_pool, jint index))
   constantPoolHandle cp = JVMCIENV->asConstantPool(jvmci_constant_pool);
   oop result = cp->resolve_possibly_cached_constant_at(index, CHECK_NULL);
@@ -2181,7 +2187,8 @@ C2V_VMENTRY_NULL(jobject, getObject, (JNIEnv* env, jobject, jobject x, long disp
 C2V_VMENTRY(void, deleteGlobalHandle, (JNIEnv* env, jobject, jlong h))
   jobject handle = (jobject)(address)h;
   if (handle != NULL) {
-    JVMCI::destroy_global(handle);
+    assert(JVMCI::is_global_handle(handle), "Invalid delete of global JNI handle");
+    *((oop*)handle) = NULL; // Mark the handle as deleted, allocate will reuse it
   }
 }
 
@@ -2409,7 +2416,7 @@ C2V_VMENTRY_0(jlong, translate, (JNIEnv* env, jobject, jobject obj_handle))
         if (peerEnv->is_hotspot()) {
           // Only the mirror in the HotSpot heap is accessible
           // through JVMCINMethodData
-          oop nmethod_mirror = data->get_nmethod_mirror(nm, /* phantom_ref */ true);
+          oop nmethod_mirror = data->get_nmethod_mirror(nm);
           if (nmethod_mirror != NULL) {
             result = HotSpotJVMCI::wrap(nmethod_mirror);
           }
@@ -2436,7 +2443,7 @@ C2V_VMENTRY_0(jlong, translate, (JNIEnv* env, jobject, jobject obj_handle))
           if (data == NULL) {
             JVMCI_THROW_MSG_0(IllegalArgumentException, "Cannot set HotSpotNmethod mirror for default nmethod");
           }
-          if (data->get_nmethod_mirror(nm, /* phantom_ref */ false) != NULL) {
+          if (data->get_nmethod_mirror(nm) != NULL) {
             JVMCI_THROW_MSG_0(IllegalArgumentException, "Cannot overwrite existing HotSpotNmethod mirror for nmethod");
           }
           oop nmethod_mirror = HotSpotJVMCI::resolve(result);
@@ -2626,6 +2633,7 @@ JNINativeMethod CompilerToVM::methods[] = {
   {CC "lookupAppendixInPool",                         CC "(" HS_CONSTANT_POOL "I)" OBJECTCONSTANT,                                          FN_PTR(lookupAppendixInPool)},
   {CC "lookupMethodInPool",                           CC "(" HS_CONSTANT_POOL "IB)" HS_RESOLVED_METHOD,                                     FN_PTR(lookupMethodInPool)},
   {CC "constantPoolRemapInstructionOperandFromCache", CC "(" HS_CONSTANT_POOL "I)I",                                                        FN_PTR(constantPoolRemapInstructionOperandFromCache)},
+  {CC "resolveConstantInPool",                        CC "(" HS_CONSTANT_POOL "I)" OBJECTCONSTANT,                                          FN_PTR(resolveConstantInPool)},
   {CC "resolvePossiblyCachedConstantInPool",          CC "(" HS_CONSTANT_POOL "I)" OBJECTCONSTANT,                                          FN_PTR(resolvePossiblyCachedConstantInPool)},
   {CC "resolveTypeInPool",                            CC "(" HS_CONSTANT_POOL "I)" HS_RESOLVED_KLASS,                                       FN_PTR(resolveTypeInPool)},
   {CC "resolveFieldInPool",                           CC "(" HS_CONSTANT_POOL "I" HS_RESOLVED_METHOD "B[I)" HS_RESOLVED_KLASS,              FN_PTR(resolveFieldInPool)},

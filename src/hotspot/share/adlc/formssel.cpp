@@ -3513,7 +3513,7 @@ int MatchNode::needs_ideal_memory_edge(FormDict &globals) const {
     "GetAndSetB", "GetAndSetS", "GetAndAddI", "GetAndSetI", "GetAndSetP",
     "GetAndAddB", "GetAndAddS", "GetAndAddL", "GetAndSetL", "GetAndSetN",
 #if INCLUDE_ZGC
-    "ZGetAndSetP", "ZCompareAndSwapP", "ZCompareAndExchangeP", "ZWeakCompareAndSwapP",
+    "LoadBarrierSlowReg", "ZGetAndSetP", "ZCompareAndSwapP", "ZCompareAndExchangeP", "ZWeakCompareAndSwapP",
 #endif
     "ClearArray"
   };

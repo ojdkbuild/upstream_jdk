@@ -27,7 +27,7 @@ import java.security.interfaces.*;
 
 /*
  * @test
- * @bug 8080462 8226651
+ * @bug 8080462
  * @summary testing interoperability of PSS signatures of PKCS11 provider
  *         against SunRsaSign provider
  * @library /test/lib ..
@@ -64,31 +64,42 @@ public class SigInteropPSS extends PKCS11Test {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", p);
         kpg.initialize(3072);
         KeyPair kp = kpg.generateKeyPair();
+        boolean status;
+        try {
+            status = runTest(sigSunRsaSign, sigPkcs11, kp);
+            status &= runTest(sigPkcs11, sigSunRsaSign, kp);
+        } catch (Exception e) {
+            System.out.println("Unexpected exception: " + e);
+            e.printStackTrace(System.out);
+            status = false;
+        }
 
-        runTest(sigSunRsaSign, sigPkcs11, kp);
-        runTest(sigPkcs11, sigSunRsaSign, kp);
-
+        if (!status) {
+            throw new RuntimeException("One or more test failed");
+        }
         System.out.println("Test passed");
     }
 
-    static void runTest(Signature signer, Signature verifier, KeyPair kp)
-            throws Exception {
+    static boolean runTest(Signature signer, Signature verifier, KeyPair kp) throws Exception {
         System.out.println("\tSign using " + signer.getProvider().getName());
         System.out.println("\tVerify using " + verifier.getProvider().getName());
 
-        for (String hash : DIGESTS) {
-            for (String mgfHash : DIGESTS) {
-                System.out.println("\tDigest = " + hash);
-                System.out.println("\tMGF = MGF1_" + mgfHash);
-
-                PSSParameterSpec params = new PSSParameterSpec(hash, "MGF1",
-                    new MGF1ParameterSpec(mgfHash), 0, 1);
-
+        boolean status;
+        for (String digestAlg : DIGESTS) {
+            System.out.println("\tDigest = " + digestAlg);
+            PSSParameterSpec params = new PSSParameterSpec(digestAlg, "MGF1",
+                    new MGF1ParameterSpec(digestAlg), 0, 1);
+            try {
                 signer.setParameter(params);
                 signer.initSign(kp.getPrivate());
                 verifier.setParameter(params);
                 verifier.initVerify(kp.getPublic());
-
+            } catch (Exception e) {
+                System.out.println("\tERROR: unexpected ex during init" + e);
+                status = false;
+                continue;
+            }
+            try {
                 signer.update(MSG);
                 byte[] sigBytes = signer.sign();
                 verifier.update(MSG);
@@ -96,9 +107,15 @@ public class SigInteropPSS extends PKCS11Test {
                 if (isValid) {
                     System.out.println("\tPSS Signature verified");
                 } else {
-                    throw new RuntimeException("ERROR verifying PSS Signature");
+                    System.out.println("\tERROR verifying PSS Signature");
+                    status = false;
                 }
+            } catch (Exception e) {
+                System.out.println("\tERROR: unexpected ex" + e);
+                e.printStackTrace();
+                status = false;
             }
         }
+        return true;
     }
 }

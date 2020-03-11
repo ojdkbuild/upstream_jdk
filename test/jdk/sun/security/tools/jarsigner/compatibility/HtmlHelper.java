@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ public class HtmlHelper {
     }
 
     public static String startTable() {
-        return startTag("table border=\"1\" padding=\"1\" cellspacing=\"0\" " + STYLE);
+        return startTag("table " + STYLE);
     }
 
     public static String endTable() {
@@ -68,19 +68,19 @@ public class HtmlHelper {
     }
 
     public static String startTr() {
-        return "\t" + startTag("tr") + "\n";
+        return startTag("tr");
     }
 
     public static String endTr() {
-        return "\t" + endTag("tr") + "\n";
+        return endTag("tr");
     }
 
     public static String startTd() {
-        return "\t\t" + startTag("td");
+        return startTag("td");
     }
 
     public static String endTd() {
-        return endTag("td") + "\n";
+        return endTag("td");
     }
 
     public static String startTag(String tag) {
@@ -92,7 +92,7 @@ public class HtmlHelper {
     }
 
     public static String anchorName(String name, String text) {
-        return "<a name=" + name + "><hr/>" + text + "</a>";
+        return "<a name=" + name + ">" + text + "</a>";
     }
 
     public static String anchorLink(String file, String anchorName,

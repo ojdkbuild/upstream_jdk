@@ -355,7 +355,6 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -628,8 +627,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     static class IntrinsicScope extends InliningScope {
-        StateSplit returnStateSplit;
-        ArrayList<StateSplit> invalidStateUsers;
+        boolean sawInvalidFrameState;
 
         IntrinsicScope(BytecodeParser parser) {
             super(parser);
@@ -652,64 +650,30 @@ public class BytecodeParser implements GraphBuilderContext {
                 isRootCompilation = false;
             }
             processPlaceholderFrameStates(isRootCompilation);
-            if (invalidStateUsers != null) {
+            if (sawInvalidFrameState) {
                 JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
-                ValueNode returnValue = parser.frameState.pop(returnKind);
-                if (invalidStateUsers.size() == 1 && invalidStateUsers.get(0) == parser.lastInstr) {
-                    updateSplitFrameState(invalidStateUsers.get(0), returnKind, returnValue);
-                } else if (parser.lastInstr instanceof MergeNode) {
-                    ValuePhiNode returnValues = null;
-                    MergeNode merge = (MergeNode) parser.lastInstr;
-
-                    if (returnValue instanceof ValuePhiNode && ((ValuePhiNode) returnValue).merge() == parser.lastInstr) {
-                        returnValues = (ValuePhiNode) returnValue;
-                    }
-                    if (invalidStateUsers.remove(merge)) {
-                        updateSplitFrameState(merge, returnKind, returnValue);
-                    }
-                    for (EndNode pred : merge.cfgPredecessors()) {
-                        Node lastPred = pred.predecessor();
-                        if (invalidStateUsers.remove(lastPred)) {
-                            ValueNode predReturnValue = returnValue;
-                            if (returnValues != null) {
-                                int index = merge.phiPredecessorIndex(pred);
-                                predReturnValue = ((ValuePhiNode) returnValue).valueAt(index);
-                            }
-                            updateSplitFrameState((StateSplit) lastPred, returnKind, predReturnValue);
-                        }
-                    }
-                    if (invalidStateUsers.size() != 0) {
-                        throw new GraalError("unexpected StateSplit above merge %s", invalidStateUsers);
-                    }
-                } else {
-                    throw new GraalError("unexpected node between return StateSplit and last instruction %s", parser.lastInstr);
-                }
-                // Restore the original return value
-                parser.frameState.push(returnKind, returnValue);
-            }
-        }
-
-        private void updateSplitFrameState(StateSplit split, JavaKind returnKind, ValueNode returnValue) {
-            parser.frameState.push(returnKind, returnValue);
-            FrameState oldState = split.stateAfter();
-            split.setStateAfter(parser.createFrameState(parser.stream.nextBCI(), split));
-            parser.frameState.pop(returnKind);
-            if (oldState.hasNoUsages()) {
-                oldState.safeDelete();
+                FrameStateBuilder frameStateBuilder = parser.frameState;
+                ValueNode returnValue = frameStateBuilder.pop(returnKind);
+                StructuredGraph graph = parser.lastInstr.graph();
+                StateSplitProxyNode proxy = graph.add(new StateSplitProxyNode(returnValue));
+                parser.lastInstr.setNext(proxy);
+                frameStateBuilder.push(returnKind, proxy);
+                proxy.setStateAfter(parser.createFrameState(parser.stream.nextBCI(), proxy));
+                parser.lastInstr = proxy;
             }
         }
 
         @Override
         protected void handleReturnMismatch(StructuredGraph g, FrameState fs) {
-            if (invalidStateUsers == null) {
-                invalidStateUsers = new ArrayList<>();
-            }
-            for (Node use : fs.usages()) {
-                if (!(use instanceof StateSplit)) {
-                    throw new GraalError("Expected StateSplit for return mismatch");
-                }
-                invalidStateUsers.add((StateSplit) use);
-            }
+            // If the intrinsic returns a non-void value, then any frame
+            // state with an empty stack is invalid as it cannot
+            // be used to deoptimize to just after the call returns.
+            // These invalid frame states are expected to be removed
+            // by later compilation stages.
+            FrameState newFrameState = g.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
+            newFrameState.setNodeSourcePosition(fs.getNodeSourcePosition());
+            fs.replaceAndDelete(newFrameState);
+            sawInvalidFrameState = true;
         }
     }
 
@@ -2678,6 +2642,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             List<ReturnToCallerData> calleeReturnDataList = parser.returnDataList;
 
+            processCalleeReturn(targetMethod, s, calleeReturnDataList);
             /*
              * Propagate any side effects into the caller when parsing intrinsics.
              */
@@ -2686,8 +2651,6 @@ public class BytecodeParser implements GraphBuilderContext {
                     frameState.addSideEffect(sideEffect);
                 }
             }
-
-            processCalleeReturn(targetMethod, s, calleeReturnDataList);
 
             calleeBeforeUnwindNode = parser.getBeforeUnwindNode();
             if (calleeBeforeUnwindNode != null) {

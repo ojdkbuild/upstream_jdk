@@ -145,7 +145,7 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
     }
 
     private Validator checkTrustedInit(X509Certificate[] chain,
-            String authType, boolean checkClientTrusted) {
+                                        String authType, boolean isClient) {
         if (chain == null || chain.length == 0) {
             throw new IllegalArgumentException(
                 "null or zero-length certificate chain");
@@ -157,7 +157,7 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
         }
 
         Validator v = null;
-        if (checkClientTrusted) {
+        if (isClient) {
             v = clientValidator;
             if (v == null) {
                 validatorLock.lock();
@@ -192,10 +192,9 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
         return v;
     }
 
-    private void checkTrusted(X509Certificate[] chain,
-            String authType, Socket socket,
-            boolean checkClientTrusted) throws CertificateException {
-        Validator v = checkTrustedInit(chain, authType, checkClientTrusted);
+    private void checkTrusted(X509Certificate[] chain, String authType,
+                Socket socket, boolean isClient) throws CertificateException {
+        Validator v = checkTrustedInit(chain, authType, isClient);
 
         X509Certificate[] trustedChain = null;
         if ((socket != null) && socket.isConnected() &&
@@ -224,23 +223,28 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
 
             // Grab any stapled OCSP responses for use in validation
             List<byte[]> responseList = Collections.emptyList();
-            if (!checkClientTrusted && isExtSession) {
+            if (!isClient && isExtSession) {
                 responseList =
                         ((ExtendedSSLSession)session).getStatusResponses();
             }
             trustedChain = v.validate(chain, null, responseList,
-                    constraints, checkClientTrusted ? null : authType);
+                    constraints, isClient ? null : authType);
+
+            // check if EE certificate chains to a public root CA (as
+            // pre-installed in cacerts)
+            boolean chainsToPublicCA = AnchorCertificates.contains(
+                    trustedChain[trustedChain.length-1]);
 
             // check endpoint identity
             String identityAlg = sslSocket.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
             if (identityAlg != null && !identityAlg.isEmpty()) {
-                checkIdentity(session,
-                        trustedChain, identityAlg, checkClientTrusted);
+                checkIdentity(session, trustedChain[0], identityAlg, isClient,
+                        getRequestedServerNames(socket), chainsToPublicCA);
             }
         } else {
             trustedChain = v.validate(chain, null, Collections.emptyList(),
-                    null, checkClientTrusted ? null : authType);
+                    null, isClient ? null : authType);
         }
 
         if (SSLLogger.isOn && SSLLogger.isOn("ssl,trustmanager")) {
@@ -249,10 +253,9 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
         }
     }
 
-    private void checkTrusted(X509Certificate[] chain,
-            String authType, SSLEngine engine,
-            boolean checkClientTrusted) throws CertificateException {
-        Validator v = checkTrustedInit(chain, authType, checkClientTrusted);
+    private void checkTrusted(X509Certificate[] chain, String authType,
+            SSLEngine engine, boolean isClient) throws CertificateException {
+        Validator v = checkTrustedInit(chain, authType, isClient);
 
         X509Certificate[] trustedChain = null;
         if (engine != null) {
@@ -278,23 +281,28 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
 
             // Grab any stapled OCSP responses for use in validation
             List<byte[]> responseList = Collections.emptyList();
-            if (!checkClientTrusted && isExtSession) {
+            if (!isClient && isExtSession) {
                 responseList =
                         ((ExtendedSSLSession)session).getStatusResponses();
             }
             trustedChain = v.validate(chain, null, responseList,
-                    constraints, checkClientTrusted ? null : authType);
+                    constraints, isClient ? null : authType);
+
+            // check if EE certificate chains to a public root CA (as
+            // pre-installed in cacerts)
+            boolean chainsToPublicCA = AnchorCertificates.contains(
+                    trustedChain[trustedChain.length-1]);
 
             // check endpoint identity
             String identityAlg = engine.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
             if (identityAlg != null && !identityAlg.isEmpty()) {
-                checkIdentity(session, trustedChain,
-                        identityAlg, checkClientTrusted);
+                checkIdentity(session, trustedChain[0], identityAlg, isClient,
+                        getRequestedServerNames(engine), chainsToPublicCA);
             }
         } else {
             trustedChain = v.validate(chain, null, Collections.emptyList(),
-                    null, checkClientTrusted ? null : authType);
+                    null, isClient ? null : authType);
         }
 
         if (SSLLogger.isOn && SSLLogger.isOn("ssl,trustmanager")) {
@@ -352,8 +360,14 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
     static List<SNIServerName> getRequestedServerNames(Socket socket) {
         if (socket != null && socket.isConnected() &&
                                         socket instanceof SSLSocket) {
-            return getRequestedServerNames(
-                    ((SSLSocket)socket).getHandshakeSession());
+
+            SSLSocket sslSocket = (SSLSocket)socket;
+            SSLSession session = sslSocket.getHandshakeSession();
+
+            if (session != null && (session instanceof ExtendedSSLSession)) {
+                ExtendedSSLSession extSession = (ExtendedSSLSession)session;
+                return extSession.getRequestedServerNames();
+            }
         }
 
         return Collections.<SNIServerName>emptyList();
@@ -362,16 +376,12 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
     // Also used by X509KeyManagerImpl
     static List<SNIServerName> getRequestedServerNames(SSLEngine engine) {
         if (engine != null) {
-            return getRequestedServerNames(engine.getHandshakeSession());
-        }
+            SSLSession session = engine.getHandshakeSession();
 
-        return Collections.<SNIServerName>emptyList();
-    }
-
-    private static List<SNIServerName> getRequestedServerNames(
-            SSLSession session) {
-        if (session != null && (session instanceof ExtendedSSLSession)) {
-            return ((ExtendedSSLSession)session).getRequestedServerNames();
+            if (session != null && (session instanceof ExtendedSSLSession)) {
+                ExtendedSSLSession extSession = (ExtendedSSLSession)session;
+                return extSession.getRequestedServerNames();
+            }
         }
 
         return Collections.<SNIServerName>emptyList();
@@ -392,28 +402,23 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
      * the identity checking aginst the server_name extension if present, and
      * may failove to peer host checking.
      */
-    static void checkIdentity(SSLSession session,
-            X509Certificate[] trustedChain,
+    private static void checkIdentity(SSLSession session,
+            X509Certificate cert,
             String algorithm,
-            boolean checkClientTrusted) throws CertificateException {
-
-        // check if EE certificate chains to a public root CA (as
-        // pre-installed in cacerts)
-        boolean chainsToPublicCA = AnchorCertificates.contains(
-                trustedChain[trustedChain.length - 1]);
+            boolean isClient,
+            List<SNIServerName> sniNames,
+            boolean chainsToPublicCA) throws CertificateException {
 
         boolean identifiable = false;
         String peerHost = session.getPeerHost();
-        if (!checkClientTrusted) {
-            List<SNIServerName> sniNames = getRequestedServerNames(session);
-            String sniHostName = getHostNameInSNI(sniNames);
-            if (sniHostName != null) {
+        if (isClient) {
+            String hostname = getHostNameInSNI(sniNames);
+            if (hostname != null) {
                 try {
-                    checkIdentity(sniHostName,
-                            trustedChain[0], algorithm, chainsToPublicCA);
+                    checkIdentity(hostname, cert, algorithm, chainsToPublicCA);
                     identifiable = true;
                 } catch (CertificateException ce) {
-                    if (sniHostName.equalsIgnoreCase(peerHost)) {
+                    if (hostname.equalsIgnoreCase(peerHost)) {
                         throw ce;
                     }
 
@@ -423,8 +428,7 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
         }
 
         if (!identifiable) {
-            checkIdentity(peerHost,
-                    trustedChain[0], algorithm, chainsToPublicCA);
+            checkIdentity(peerHost, cert, algorithm, chainsToPublicCA);
         }
     }
 

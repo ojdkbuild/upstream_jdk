@@ -25,14 +25,31 @@
 #ifndef SHARE_JFR_LEAKPROFILER_STOPOPERATION_HPP
 #define SHARE_JFR_LEAKPROFILER_STOPOPERATION_HPP
 
+#include "jfr/leakprofiler/leakProfiler.hpp"
 #include "jfr/leakprofiler/sampling/objectSampler.hpp"
-#include "jfr/leakprofiler/utilities/vmOperation.hpp"
+#include "jfr/recorder/service/jfrOptionSet.hpp"
+#include "logging/log.hpp"
+#include "runtime/vmOperations.hpp"
 
-// Safepoint operation for stopping and destroying the leak profiler object sampler
-class StopOperation : public OldObjectVMOperation {
+// Safepoint operation for stopping leak profiler object sampler
+class StopOperation : public VM_Operation {
  public:
+  StopOperation() {}
+
+  Mode evaluation_mode() const {
+    return _safepoint;
+  }
+
+  VMOp_Type type() const {
+    return VMOp_GC_HeapInspection;
+  }
+
   virtual void doit() {
-    ObjectSampler::destroy();
+    assert(LeakProfiler::is_running(), "invariant");
+    ObjectSampler* object_sampler = LeakProfiler::object_sampler();
+    delete object_sampler;
+    LeakProfiler::set_object_sampler(NULL);
+    log_trace(jfr, system)( "Object sampling stopped");
   }
 };
 

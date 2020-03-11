@@ -775,9 +775,9 @@ public class JavacParser implements Parser {
 
     public JCExpression unannotatedType(boolean allowVar) {
         JCExpression result = term(TYPE);
-        Name restrictedTypeName = restrictedTypeName(result, !allowVar);
+        Name restrictedTypeName;
 
-        if (restrictedTypeName != null && (!allowVar || restrictedTypeName != names.var)) {
+        if (!allowVar && (restrictedTypeName = restrictedTypeName(result, true)) != null) {
             syntaxError(result.pos, Errors.RestrictedTypeNotAllowedHere(restrictedTypeName));
         }
 

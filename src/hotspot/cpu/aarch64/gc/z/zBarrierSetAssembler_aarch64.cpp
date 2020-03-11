@@ -63,25 +63,27 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
     return;
   }
 
-  assert_different_registers(rscratch1, rscratch2, src.base());
-  assert_different_registers(rscratch1, rscratch2, dst);
-
-  RegSet savedRegs = RegSet::range(r0,r28) - RegSet::of(dst, rscratch1, rscratch2);
+  // rscratch1 can be passed as src or dst, so don't use it.
+  RegSet savedRegs = RegSet::of(rscratch2, rheapbase);
 
   Label done;
+  assert_different_registers(rheapbase, rscratch2, dst);
+  assert_different_registers(rheapbase, rscratch2, src.base());
+
+  __ push(savedRegs, sp);
 
   // Load bad mask into scratch register.
-  __ ldr(rscratch1, address_bad_mask_from_thread(rthread));
+  __ ldr(rheapbase, address_bad_mask_from_thread(rthread));
   __ lea(rscratch2, src);
   __ ldr(dst, src);
 
   // Test reference against bad mask. If mask bad, then we need to fix it up.
-  __ tst(dst, rscratch1);
+  __ tst(dst, rheapbase);
   __ br(Assembler::EQ, done);
 
   __ enter();
 
-  __ push(savedRegs, sp);
+  __ push(RegSet::range(r0,r28) - RegSet::of(dst), sp);
 
   if (c_rarg0 != dst) {
     __ mov(c_rarg0, dst);
@@ -89,15 +91,13 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
   __ mov(c_rarg1, rscratch2);
 
   int step = 4 * wordSize;
-  __ mov(rscratch2, -step);
+  __ mov(rscratch1, -step);
   __ sub(sp, sp, step);
 
   for (int i = 28; i >= 4; i -= 4) {
     __ st1(as_FloatRegister(i), as_FloatRegister(i+1), as_FloatRegister(i+2),
-        as_FloatRegister(i+3), __ T1D, Address(__ post(sp, rscratch2)));
+        as_FloatRegister(i+3), __ T1D, Address(__ post(sp, rscratch1)));
   }
-  __ st1(as_FloatRegister(0), as_FloatRegister(1), as_FloatRegister(2),
-      as_FloatRegister(3), __ T1D, Address(sp));
 
   __ call_VM_leaf(ZBarrierSetRuntime::load_barrier_on_oop_field_preloaded_addr(decorators), 2);
 
@@ -111,10 +111,13 @@ void ZBarrierSetAssembler::load_at(MacroAssembler* masm,
     __ mov(dst, r0);
   }
 
-  __ pop(savedRegs, sp);
+  __ pop(RegSet::range(r0,r28) - RegSet::of(dst), sp);
   __ leave();
 
   __ bind(done);
+
+  // Restore tmps
+  __ pop(savedRegs, sp);
 }
 
 #ifdef ASSERT

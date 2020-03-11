@@ -41,11 +41,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 /**
- * IeeeDouble tests
- *
- * @test
- * @modules jdk.scripting.nashorn/jdk.nashorn.internal.runtime.doubleconv:open
- * @run testng jdk.nashorn.internal.runtime.doubleconv.test.IeeeDoubleTest
+ * Ieee class tests
  */
 @SuppressWarnings({"unchecked", "javadoc"})
 public class IeeeDoubleTest {

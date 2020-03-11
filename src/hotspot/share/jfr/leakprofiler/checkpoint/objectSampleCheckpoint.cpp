@@ -181,89 +181,102 @@ class SampleMark {
   }
 };
 
-void ObjectSampleCheckpoint::install(JfrCheckpointWriter& writer, bool class_unload, bool type_set) {
+void ObjectSampleCheckpoint::install(JfrCheckpointWriter& writer, bool class_unload, bool resume) {
+  assert(class_unload ? SafepointSynchronize::is_at_safepoint() : LeakProfiler::is_suspended(), "invariant");
+
   if (!writer.has_data()) {
+    if (!class_unload) {
+      LeakProfiler::resume();
+    }
+    assert(LeakProfiler::is_running(), "invariant");
     return;
   }
 
   assert(writer.has_data(), "invariant");
   const JfrCheckpointBlobHandle h_cp = writer.checkpoint_blob();
-  CheckpointInstall install(h_cp);
 
-  // Class unload implies a safepoint.
-  // Not class unload implies the object sampler is locked, because it was claimed exclusively earlier.
-  // Therefore: direct access the object sampler instance is safe.
-  ObjectSampler* const object_sampler = ObjectSampler::sampler();
+  const ObjectSampler* const object_sampler = LeakProfiler::object_sampler();
   assert(object_sampler != NULL, "invariant");
 
   ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
   const ObjectSample* const last_resolved = object_sampler->last_resolved();
+  CheckpointInstall install(h_cp);
 
-  // install only to new samples since last resolved checkpoint
+  if (class_unload) {
+    if (last != NULL) {
+      // all samples need the class unload information
+      do_samples(last, NULL, install);
+    }
+    assert(LeakProfiler::is_running(), "invariant");
+    return;
+  }
+
+  // only new samples since last resolved checkpoint
   if (last != last_resolved) {
     do_samples(last, last_resolved, install);
-    if (class_unload) {
-      return;
+    if (resume) {
+      const_cast<ObjectSampler*>(object_sampler)->set_last_resolved(last);
     }
-    if (type_set) {
-      object_sampler->set_last_resolved(last);
-    }
+  }
+  assert(LeakProfiler::is_suspended(), "invariant");
+  if (resume) {
+    LeakProfiler::resume();
+    assert(LeakProfiler::is_running(), "invariant");
   }
 }
 
-void ObjectSampleCheckpoint::write(ObjectSampler* sampler, EdgeStore* edge_store, bool emit_all, Thread* thread) {
-  assert(sampler != NULL, "invariant");
+void ObjectSampleCheckpoint::write(const EdgeStore* edge_store, bool emit_all, Thread* thread) {
   assert(edge_store != NULL, "invariant");
   assert(thread != NULL, "invariant");
-
   static bool types_registered = false;
   if (!types_registered) {
     JfrSerializer::register_serializer(TYPE_OLDOBJECTROOTSYSTEM, false, true, new RootSystemType());
     JfrSerializer::register_serializer(TYPE_OLDOBJECTROOTTYPE, false, true, new RootType());
     types_registered = true;
   }
-
-  const jlong last_sweep = emit_all ? max_jlong : sampler->last_sweep().value();
-  ObjectSample* const last = const_cast<ObjectSample*>(sampler->last());
+  const ObjectSampler* const object_sampler = LeakProfiler::object_sampler();
+  assert(object_sampler != NULL, "invariant");
+  const jlong last_sweep = emit_all ? max_jlong : object_sampler->last_sweep().value();
+  ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
   {
     JfrCheckpointWriter writer(false, false, thread);
     CheckpointWrite checkpoint_write(writer, last_sweep);
     do_samples(last, NULL, checkpoint_write);
   }
-
   CheckpointStateReset state_reset(last_sweep);
   do_samples(last, NULL, state_reset);
-
   if (!edge_store->is_empty()) {
     // java object and chain representations
     JfrCheckpointWriter writer(false, true, thread);
     ObjectSampleWriter osw(writer, edge_store);
-    edge_store->iterate(osw);
+    edge_store->iterate_edges(osw);
   }
 }
 
-int ObjectSampleCheckpoint::mark(ObjectSampler* object_sampler, ObjectSampleMarker& marker, bool emit_all) {
-  assert(object_sampler != NULL, "invariant");
-  ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
-  if (last == NULL) {
-    return 0;
-  }
-  const jlong last_sweep = emit_all ? max_jlong : object_sampler->last_sweep().value();
-  SampleMark mark(marker, last_sweep);
-  do_samples(last, NULL, mark);
-  return mark.count();
+WriteObjectSampleStacktrace::WriteObjectSampleStacktrace(JfrStackTraceRepository& repo) :
+  _stack_trace_repo(repo) {
 }
-
-WriteObjectSampleStacktrace::WriteObjectSampleStacktrace(ObjectSampler* sampler, JfrStackTraceRepository& repo) :
-  _sampler(sampler), _stack_trace_repo(repo) {}
 
 bool WriteObjectSampleStacktrace::process() {
-  assert(LeakProfiler::is_running(), "invariant");
-  assert(_sampler != NULL, "invariant");
+  assert(SafepointSynchronize::is_at_safepoint(), "invariant");
+  if (!LeakProfiler::is_running()) {
+    return true;
+  }
+  // Suspend the LeakProfiler subsystem
+  // to ensure stable samples even
+  // after we return from the safepoint.
+  LeakProfiler::suspend();
+  assert(!LeakProfiler::is_running(), "invariant");
+  assert(LeakProfiler::is_suspended(), "invariant");
 
-  ObjectSample* const last = const_cast<ObjectSample*>(_sampler->last());
-  const ObjectSample* const last_resolved = _sampler->last_resolved();
+  const ObjectSampler* object_sampler = LeakProfiler::object_sampler();
+  assert(object_sampler != NULL, "invariant");
+  assert(LeakProfiler::is_suspended(), "invariant");
+
+  ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
+  const ObjectSample* const last_resolved = object_sampler->last_resolved();
   if (last == last_resolved) {
+    assert(LeakProfiler::is_suspended(), "invariant");
     return true;
   }
 
@@ -281,13 +294,27 @@ bool WriteObjectSampleStacktrace::process() {
   }
   if (count == 0) {
     writer.set_context(ctx);
+    assert(LeakProfiler::is_suspended(), "invariant");
     return true;
   }
   assert(count > 0, "invariant");
   writer.write_count((u4)count, count_offset);
   JfrStackTraceRepository::write_metadata(writer);
 
-  // install the stacktrace checkpoint information to the candidates
   ObjectSampleCheckpoint::install(writer, false, false);
+  assert(LeakProfiler::is_suspended(), "invariant");
   return true;
+}
+
+int ObjectSampleCheckpoint::mark(ObjectSampleMarker& marker, bool emit_all) {
+  const ObjectSampler* object_sampler = LeakProfiler::object_sampler();
+  assert(object_sampler != NULL, "invariant");
+  ObjectSample* const last = const_cast<ObjectSample*>(object_sampler->last());
+  if (last == NULL) {
+    return 0;
+  }
+  const jlong last_sweep = emit_all ? max_jlong : object_sampler->last_sweep().value();
+  SampleMark mark(marker, last_sweep);
+  do_samples(last, NULL, mark);
+  return mark.count();
 }

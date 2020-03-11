@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,7 @@ import java.util.Enumeration;
  * it could be associated with a server or client who participates in many
  * sessions concurrently.
  * <p>
- * Not all environments will contain session contexts.  For example, stateless
- * session resumption.
- * <p>
- * Session contexts may not contain all sessions. For example, stateless
- * sessions are not stored in the session context.
+ * Not all environments will contain session contexts.
  * <p>
  * There are <code>SSLSessionContext</code> parameters that affect how
  * sessions are stored:
@@ -72,11 +68,8 @@ public interface SSLSessionContext {
     public SSLSession getSession(byte[] sessionId);
 
     /**
-     * Returns an Enumeration of all known session id's grouped under this
+     * Returns an Enumeration of all session id's grouped under this
      * <code>SSLSessionContext</code>.
-     * <p>Session contexts may not contain all sessions. For example,
-     * stateless sessions are not stored in the session context.
-     * <p>
      *
      * @return an enumeration of all the Session id's
      */

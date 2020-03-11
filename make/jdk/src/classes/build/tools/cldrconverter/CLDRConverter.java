@@ -108,7 +108,7 @@ public class CLDRConverter {
     private static final ResourceBundle.Control defCon =
         ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    private static Set<String> AVAILABLE_TZIDS;
+    private static final String[] AVAILABLE_TZIDS = TimeZone.getAvailableIDs();
     private static String zoneNameTempFile;
     private static String tzDataDir;
     private static final Map<String, String> canonicalTZMap = new HashMap<>();
@@ -730,7 +730,7 @@ public class CLDRConverter {
             });
         }
 
-        getAvailableZoneIds().stream().forEach(tzid -> {
+        Arrays.stream(AVAILABLE_TZIDS).forEach(tzid -> {
             // If the tzid is deprecated, get the data for the replacement id
             String tzKey = Optional.ofNullable((String)handlerSupplMeta.get(tzid))
                                    .orElse(tzid);
@@ -1074,20 +1074,8 @@ public class CLDRConverter {
             StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
-    // This method assumes handlerMetaZones is already initialized
-    private static Set<String> getAvailableZoneIds() {
-        assert handlerMetaZones != null;
-        if (AVAILABLE_TZIDS == null) {
-            AVAILABLE_TZIDS = new HashSet<>(ZoneId.getAvailableZoneIds());
-            AVAILABLE_TZIDS.addAll(handlerMetaZones.keySet());
-            AVAILABLE_TZIDS.remove(MetaZonesParseHandler.NO_METAZONE_KEY);
-        }
-
-        return AVAILABLE_TZIDS;
-    }
-
     private static Stream<String> zidMapEntry() {
-        return getAvailableZoneIds().stream()
+        return ZoneId.getAvailableZoneIds().stream()
                 .map(id -> {
                     String canonId = canonicalTZMap.getOrDefault(id, id);
                     String meta = handlerMetaZones.get(canonId);

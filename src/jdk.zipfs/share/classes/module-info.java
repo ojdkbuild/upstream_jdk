@@ -60,7 +60,7 @@
  *
  * <tbody>
  * <tr>
- *   <th scope="row">create</th>
+ *   <td scope="row">create</td>
  *   <td>java.lang.String</td>
  *   <td>false</td>
  *   <td>
@@ -69,7 +69,7 @@
  *   </td>
  * </tr>
  * <tr>
- *   <th scope="row">encoding</th>
+ *   <td scope="row">encoding</td>
  *   <td>java.lang.String</td>
  *   <td>UTF-8</td>
  *   <td>

@@ -29,8 +29,7 @@
 class ReturnOutsideSwitchExpression {
     int t(int i) {
         return switch (i) {
-            case 0: return -1;
-            default: yield 0;
+            default: return -1;
         };
     }
 }

@@ -46,6 +46,7 @@ import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.Locale;
 
 /**
@@ -254,17 +255,13 @@ final class SessionTicketExtension {
             data = buf;
         }
 
-        public byte[] encrypt(HandshakeContext hc, SSLSessionImpl session) {
+        public byte[] encrypt(HandshakeContext hc, SSLSessionImpl session)
+                throws IOException {
             byte[] encrypted;
-
-            if (!hc.handshakeSession.isStatelessable(hc)) {
-                return new byte[0];
-            }
+            StatelessKey key = KeyState.getCurrentKey(hc);
+            byte[] iv = new byte[16];
 
             try {
-                StatelessKey key = KeyState.getCurrentKey(hc);
-                byte[] iv = new byte[16];
-
                 SecureRandom random = hc.sslContext.getSecureRandom();
                 random.nextBytes(iv);
                 Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
@@ -276,11 +273,8 @@ final class SessionTicketExtension {
                         (byte)(key.num >>> 8),
                         (byte)(key.num)}
                 );
-                byte[] data = session.write();
-                if (data.length == 0) {
-                    return data;
-                }
-                encrypted = c.doFinal(data);
+                encrypted = c.doFinal(session.write());
+
                 byte[] result = new byte[encrypted.length + Integer.BYTES +
                         iv.length];
                 result[0] = (byte)(key.num >>> 24);
@@ -292,10 +286,7 @@ final class SessionTicketExtension {
                         Integer.BYTES + iv.length, encrypted.length);
                 return result;
             } catch (Exception e) {
-                if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
-                    SSLLogger.fine("Encryption failed." + e);
-                }
-                return new byte[0];
+                throw hc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, e);
             }
         }
 
@@ -320,7 +311,11 @@ final class SessionTicketExtension {
                         (byte)(keyID >>> 8),
                         (byte)(keyID)}
                 );
-
+                /*
+                return ByteBuffer.wrap(c.doFinal(data,
+                        Integer.BYTES + iv.length,
+                        data.length - (Integer.BYTES + iv.length)));
+                 */
                 ByteBuffer out;
                 out = ByteBuffer.allocate(data.remaining() - GCM_TAG_LEN / 8);
                 c.doFinal(data, out);

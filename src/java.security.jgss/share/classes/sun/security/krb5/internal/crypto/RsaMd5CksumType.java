@@ -101,14 +101,4 @@ public final class RsaMd5CksumType extends CksumType {
         return false;
     }
 
-    @Override
-    public boolean verifyChecksum(byte[] data, byte[] checksum)
-            throws KrbCryptoException {
-        try {
-            byte[] calculated = MessageDigest.getInstance("MD5").digest(data);
-            return CksumType.isChecksumEqual(calculated, checksum);
-        } catch (Exception e) {
-            return false;
-        }
-    }
 }

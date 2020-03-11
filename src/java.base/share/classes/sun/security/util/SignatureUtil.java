@@ -28,7 +28,6 @@ package sun.security.util;
 import java.io.IOException;
 import java.security.*;
 import java.security.spec.*;
-import java.util.Locale;
 import sun.security.rsa.RSAUtil;
 import jdk.internal.access.SharedSecrets;
 
@@ -75,9 +74,14 @@ public class SignatureUtil {
             AlgorithmParameters params)
             throws ProviderException {
 
-        sigName = checkName(sigName).toUpperCase(Locale.ENGLISH);
+        sigName = checkName(sigName);
         AlgorithmParameterSpec paramSpec = null;
         if (params != null) {
+            if (sigName.toUpperCase().indexOf("RSA") == -1) {
+                throw new ProviderException
+                    ("Unrecognized algorithm for signature parameters " +
+                     sigName);
+            }
             // AlgorithmParameters.getAlgorithm() may returns oid if it's
             // created during DER decoding. Convert to use the standard name
             // before passing it to RSAUtil
@@ -89,20 +93,7 @@ public class SignatureUtil {
                     throw new ProviderException(e);
                 }
             }
-
-            if (sigName.indexOf("RSA") != -1) {
-                paramSpec = RSAUtil.getParamSpec(params);
-            } else if (sigName.indexOf("ECDSA") != -1) {
-                try {
-                    paramSpec = params.getParameterSpec(ECParameterSpec.class);
-                } catch (Exception e) {
-                    throw new ProviderException("Error handling EC parameters", e);
-                }
-            } else {
-                throw new ProviderException
-                    ("Unrecognized algorithm for signature parameters " +
-                     sigName);
-            }
+            paramSpec = RSAUtil.getParamSpec(params);
         }
         return paramSpec;
     }
@@ -112,31 +103,17 @@ public class SignatureUtil {
     public static AlgorithmParameterSpec getParamSpec(String sigName,
             byte[] paramBytes)
             throws ProviderException {
-        sigName = checkName(sigName).toUpperCase(Locale.ENGLISH);
+        sigName = checkName(sigName);
         AlgorithmParameterSpec paramSpec = null;
-
         if (paramBytes != null) {
-            if (sigName.indexOf("RSA") != -1) {
-                AlgorithmParameters params =
-                    createAlgorithmParameters(sigName, paramBytes);
-                paramSpec = RSAUtil.getParamSpec(params);
-            } else if (sigName.indexOf("ECDSA") != -1) {
-                try {
-                    Provider p = Signature.getInstance(sigName).getProvider();
-                    paramSpec = ECUtil.getECParameterSpec(p, paramBytes);
-                } catch (Exception e) {
-                    throw new ProviderException("Error handling EC parameters", e);
-                }
-                // ECUtil discards exception and returns null, so we need to check
-                // the returned value
-                if (paramSpec == null) {
-                    throw new ProviderException("Error handling EC parameters");
-                }
-            } else {
+            if (sigName.toUpperCase().indexOf("RSA") == -1) {
                 throw new ProviderException
                      ("Unrecognized algorithm for signature parameters " +
                       sigName);
             }
+            AlgorithmParameters params =
+                createAlgorithmParameters(sigName, paramBytes);
+            paramSpec = RSAUtil.getParamSpec(params);
         }
         return paramSpec;
     }

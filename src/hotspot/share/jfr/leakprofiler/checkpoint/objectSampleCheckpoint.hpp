@@ -26,26 +26,25 @@
 #define SHARE_JFR_LEAKPROFILER_CHECKPOINT_OBJECTSAMPLECHECKPOINT_HPP
 
 #include "memory/allocation.hpp"
+#include "utilities/exceptions.hpp"
 
 class EdgeStore;
-class JfrCheckpointWriter;
 class JfrStackTraceRepository;
+class JfrCheckpointWriter;
 class ObjectSampleMarker;
-class ObjectSampler;
 
 class ObjectSampleCheckpoint : AllStatic {
  public:
-  static void install(JfrCheckpointWriter& writer, bool class_unload, bool type_set);
-  static void write(ObjectSampler* sampler, EdgeStore* edge_store, bool emit_all, Thread* thread);
-  static int mark(ObjectSampler* sampler, ObjectSampleMarker& marker, bool emit_all);
+  static void install(JfrCheckpointWriter& writer, bool class_unload, bool resume);
+  static void write(const EdgeStore* edge_store, bool emit_all, Thread* thread);
+  static int mark(ObjectSampleMarker& marker, bool emit_all);
 };
 
 class WriteObjectSampleStacktrace : public StackObj {
  private:
-  ObjectSampler* const _sampler;
   JfrStackTraceRepository& _stack_trace_repo;
  public:
-  WriteObjectSampleStacktrace(ObjectSampler* sampler, JfrStackTraceRepository& repo);
+  WriteObjectSampleStacktrace(JfrStackTraceRepository& repo);
   bool process();
 };
 

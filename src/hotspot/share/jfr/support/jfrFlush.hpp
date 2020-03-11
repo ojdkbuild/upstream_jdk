@@ -48,12 +48,10 @@ void jfr_clear_stacktrace(Thread* t);
 
 template <typename Event>
 class JfrConditionalFlush {
- protected:
-  bool _enabled;
  public:
   typedef JfrBuffer Type;
-  JfrConditionalFlush(Thread* t) : _enabled(jfr_is_event_enabled(Event::eventId)) {
-    if (_enabled) {
+  JfrConditionalFlush(Thread* t) {
+    if (jfr_is_event_enabled(Event::eventId)) {
       jfr_conditional_flush(Event::eventId, sizeof(Event), t);
     }
   }
@@ -65,7 +63,7 @@ class JfrConditionalFlushWithStacktrace : public JfrConditionalFlush<Event> {
   bool _owner;
  public:
   JfrConditionalFlushWithStacktrace(Thread* t) : JfrConditionalFlush<Event>(t), _t(t), _owner(false) {
-    if (this->_enabled && Event::has_stacktrace() && jfr_has_stacktrace_enabled(Event::eventId)) {
+    if (Event::has_stacktrace() && jfr_has_stacktrace_enabled(Event::eventId)) {
       _owner = jfr_save_stacktrace(t);
     }
   }

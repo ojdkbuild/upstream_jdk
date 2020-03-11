@@ -269,8 +269,6 @@ public class KeyStoreDelegator extends KeyStoreSpi {
                         throw (CertificateException)e;
                     } else if (e instanceof NoSuchAlgorithmException) {
                         throw (NoSuchAlgorithmException)e;
-                    } else if (e instanceof RuntimeException){
-                        throw (RuntimeException)e;
                     }
                 }
             }

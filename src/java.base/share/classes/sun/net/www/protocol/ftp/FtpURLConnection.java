@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import java.io.BufferedInputStream;
 import java.io.FilterInputStream;
 import java.io.FilterOutputStream;
 import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.SocketPermission;
 import java.net.UnknownHostException;
@@ -49,7 +48,6 @@ import java.util.Iterator;
 import java.security.Permission;
 import java.util.Properties;
 import sun.net.NetworkClient;
-import sun.net.util.IPAddressUtil;
 import sun.net.www.MessageHeader;
 import sun.net.www.MeteredStream;
 import sun.net.www.URLConnection;
@@ -159,21 +157,6 @@ public class FtpURLConnection extends URLConnection {
         }
     }
 
-    static URL checkURL(URL u) throws IllegalArgumentException {
-        if (u != null) {
-            if (u.toExternalForm().indexOf('\n') > -1) {
-                Exception mfue = new MalformedURLException("Illegal character in URL");
-                throw new IllegalArgumentException(mfue.getMessage(), mfue);
-            }
-        }
-        String s = IPAddressUtil.checkAuthority(u);
-        if (s != null) {
-            Exception mfue = new MalformedURLException(s);
-            throw new IllegalArgumentException(mfue.getMessage(), mfue);
-        }
-        return u;
-    }
-
     /**
      * Creates an FtpURLConnection from a URL.
      *
@@ -187,7 +170,7 @@ public class FtpURLConnection extends URLConnection {
      * Same as FtpURLconnection(URL) with a per connection proxy specified
      */
     FtpURLConnection(URL url, Proxy p) {
-        super(checkURL(url));
+        super(url);
         instProxy = p;
         host = url.getHost();
         port = url.getPort();

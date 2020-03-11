@@ -39,17 +39,13 @@
 #include "oops/typeArrayKlass.inline.hpp"
 #include "utilities/debug.hpp"
 
-// Defaults to strong claiming.
-inline MetadataVisitingOopIterateClosure::MetadataVisitingOopIterateClosure(ReferenceDiscoverer* rd) :
-    ClaimMetadataVisitingOopIterateClosure(ClassLoaderData::_claim_strong, rd) {}
-
-inline void ClaimMetadataVisitingOopIterateClosure::do_cld(ClassLoaderData* cld) {
-  cld->oops_do(this, _claim);
+inline void MetadataVisitingOopIterateClosure::do_cld(ClassLoaderData* cld) {
+  cld->oops_do(this, ClassLoaderData::_claim_strong);
 }
 
-inline void ClaimMetadataVisitingOopIterateClosure::do_klass(Klass* k) {
+inline void MetadataVisitingOopIterateClosure::do_klass(Klass* k) {
   ClassLoaderData* cld = k->class_loader_data();
-  ClaimMetadataVisitingOopIterateClosure::do_cld(cld);
+  MetadataVisitingOopIterateClosure::do_cld(cld);
 }
 
 #ifdef ASSERT

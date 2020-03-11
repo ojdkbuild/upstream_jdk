@@ -51,7 +51,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "jlong.h"
 
 #include "sun_security_pkcs11_wrapper_PKCS11.h"
 
@@ -97,8 +96,8 @@ JNIEXPORT jlong JNICALL
 Java_sun_security_pkcs11_wrapper_PKCS11_freeMechanism
 (JNIEnv *env, jclass thisClass, jlong ckpMechanism) {
     if (ckpMechanism != 0L) {
-        freeCKMechanismPtr(jlong_to_ptr(ckpMechanism));
-        TRACE1("DEBUG PKCS11_freeMechanism: free pMech = %x\n", ckpMechanism);
+        freeCKMechanismPtr((CK_MECHANISM_PTR) ckpMechanism);
+        TRACE1("DEBUG PKCS11_freeMechanism: free pMech = %x\n", (jlong)ckpMechanism);
     }
     return 0L;
 }

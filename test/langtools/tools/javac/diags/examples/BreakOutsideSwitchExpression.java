@@ -30,8 +30,7 @@ class BreakOutsideSwitchExpression {
     int t(int i) {
         OUT: while (true) {
             return switch (i) {
-                case 0: break OUT;
-                default: yield 0;
+                default: break OUT;
             };
         }
         return -1;

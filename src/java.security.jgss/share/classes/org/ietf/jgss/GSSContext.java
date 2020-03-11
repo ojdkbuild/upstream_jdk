@@ -128,8 +128,8 @@ import java.io.OutputStream;
  * <pre>
  *    // Create a context using default credentials
  *    // and the implementation specific default mechanism
- *    GSSManager manager = ...
- *    GSSName targetName = ...
+ *    GSSManager manager ...
+ *    GSSName targetName ...
  *    GSSContext context = manager.createContext(targetName, null, null,
  *                                           GSSContext.INDEFINITE_LIFETIME);
  *
@@ -141,23 +141,21 @@ import java.io.OutputStream;
  *
  *    // establish a context between peers
  *
- *    byte[] inToken = new byte[0];
- *    byte[] outToken;
+ *    byte []inToken = new byte[0];
  *
  *    // Loop while there still is a token to be processed
  *
  *    while (!context.isEstablished()) {
  *
- *        outToken = context.initSecContext(inToken, 0, inToken.length);
+ *        byte[] outToken
+ *            = context.initSecContext(inToken, 0, inToken.length);
  *
  *        // send the output token if generated
- *        if (outToken != null) {
+ *        if (outToken != null)
  *            sendToken(outToken);
- *        }
  *
  *        if (!context.isEstablished()) {
  *            inToken = readToken();
- *        }
  *    }
  *
  *     // display context information
@@ -167,40 +165,21 @@ import java.io.OutputStream;
  *     System.out.println("Initiator = " + context.getSrcName());
  *     System.out.println("Acceptor = " + context.getTargName());
  *
- *     if (context.getConfState()) {
- *         System.out.println("Confidentiality (i.e., privacy) is available");
- *     }
+ *     if (context.getConfState())
+ *             System.out.println("Confidentiality (i.e., privacy) is available");
  *
- *     if (context.getIntegState()) {
- *         System.out.println("Integrity is available");
- *     }
+ *     if (context.getIntegState())
+ *             System.out.println("Integrity is available");
  *
  *     // perform wrap on an application supplied message, appMsg,
  *     // using QOP = 0, and requesting privacy service
- *     byte[] appMsg = ...
+ *     byte [] appMsg ...
  *
  *     MessageProp mProp = new MessageProp(0, true);
  *
- *     outToken = context.wrap(appMsg, 0, appMsg.length, mProp);
+ *     byte []tok = context.wrap(appMsg, 0, appMsg.length, mProp);
  *
- *     sendToken(outToken);
- *
- *     // perform unwrap on an incoming application message, and check
- *     // its privacy state and supplementary information
- *     inToken = readToken();
- *
- *     mProp = new MessageProp(0, true);
- *
- *     appMsg = context.unwrap(inToken, 0, inToken.length, mProp);
- *
- *     System.out.println("Was it encrypted? " + mProp.getPrivacy());
- *     System.out.println("Duplicate Token? " + mProp.isDuplicateToken());
- *     System.out.println("Old Token? " + mProp.isOldToken());
- *     System.out.println("Unsequenced Token? " + mProp.isUnseqToken());
- *     System.out.println("Gap Token? " + mProp.isGapToken());
- *
- *     // the application determines if the privacy state and supplementary
- *     // information are acceptable
+ *     sendToken(tok);
  *
  *     // release the local-end of the context
  *     context.dispose();
