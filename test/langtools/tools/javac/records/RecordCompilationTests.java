@@ -377,12 +377,54 @@ public class RecordCompilationTests extends CompilationTestCase {
                 "    }\n" +
                 "}");
 
-        // Capture locals from local record
+        // Cant capture locals
+        assertFail("compiler.err.non-static.cant.be.ref",
+                "class R { \n" +
+                        "    void m(int y) { \n" +
+                        "        record RR(int x) { public int x() { return y; }};\n" +
+                        "    }\n" +
+                        "}");
+
+        assertFail("compiler.err.non-static.cant.be.ref",
+                "class R { \n" +
+                        "    void m() {\n" +
+                        "        int y;\n" +
+                        "        record RR(int x) { public int x() { return y; }};\n" +
+                        "    }\n" +
+                        "}");
+
+        // instance fields
+        assertFail("compiler.err.non-static.cant.be.ref",
+                "class R { \n" +
+                        "    int z = 0;\n" +
+                        "    void m() { \n" +
+                        "        record RR(int x) { public int x() { return z; }};\n" +
+                        "    }\n" +
+                        "}");
+
+        // or type variables
+        assertFail("compiler.err.non-static.cant.be.ref",
+                "class R<T> { \n" +
+                        "    void m() { \n" +
+                        "        record RR(T t) {};\n" +
+                        "    }\n" +
+                        "}");
+
+        // but static fields are OK
         assertOK("class R { \n" +
-                "    void m(int y) { \n" +
-                "        record RR(int x) { public int x() { return y; }};\n" +
+                "    static int z = 0;\n" +
+                "    void m() { \n" +
+                "        record RR(int x) { public int x() { return z; }};\n" +
                 "    }\n" +
                 "}");
+        // can be contained inside a lambda
+        assertOK("""
+                class Outer {
+                    Runnable run = () -> {
+                        record TestRecord(int i) {}
+                    };
+                }
+                """);
 
         // Can't self-shadow
         assertFail("compiler.err.already.defined",
@@ -454,6 +496,35 @@ public class RecordCompilationTests extends CompilationTestCase {
                 "        record R(int a) {}\n" +
                 "    }\n" +
                 "}");
+        assertFail("compiler.err.record.declaration.not.allowed.in.inner.classes",
+                """
+                class Outer {
+                    public void test() {
+                        class Inner extends Outer {
+                            record R(int i) {}
+                        }
+                    }
+                }
+                """);
+        assertFail("compiler.err.record.declaration.not.allowed.in.inner.classes",
+                """
+                class Outer {
+                    Runnable run = new Runnable() {
+                        record TestRecord(int i) {}
+                        public void run() {}
+                    };
+                }
+                """);
+        assertFail("compiler.err.record.declaration.not.allowed.in.inner.classes",
+                """
+                class Outer {
+                    void m() {
+                        record A() {
+                            record B() { }
+                        }
+                    }
+                }
+                """);
     }
 
     public void testReceiverParameter() {
