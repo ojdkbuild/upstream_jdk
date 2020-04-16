@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ import jdk.internal.access.JavaNioAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.ExtendedMapMode;
 import jdk.internal.misc.Unsafe;
-import jdk.internal.misc.VM;
 import jdk.internal.ref.Cleaner;
 import jdk.internal.ref.CleanerFactory;
 
@@ -1117,11 +1116,8 @@ public class FileChannelImpl
     }
 
     private boolean isSync(MapMode mode) {
-        // Do not want to initialize ExtendedMapMode until
-        // after the module system has been initialized
-        return !VM.isModuleSystemInited() ? false :
-            (mode == ExtendedMapMode.READ_ONLY_SYNC ||
-                mode == ExtendedMapMode.READ_WRITE_SYNC);
+        return mode == ExtendedMapMode.READ_ONLY_SYNC ||
+                mode == ExtendedMapMode.READ_WRITE_SYNC;
     }
 
     private int toProt(MapMode mode) {

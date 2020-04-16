@@ -127,7 +127,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSoc
             fd = new FileDescriptor();
             try {
                 socketCreate(false);
-                SocketCleanable.register(fd, false);
+                SocketCleanable.register(fd);
             } catch (IOException ioe) {
                 ResourceManager.afterUdpClose();
                 fd = null;
@@ -136,7 +136,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSoc
         } else {
             fd = new FileDescriptor();
             socketCreate(true);
-            SocketCleanable.register(fd, true);
+            SocketCleanable.register(fd);
         }
     }
 
@@ -580,7 +580,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSoc
         } finally {
             releaseFD();
         }
-        SocketCleanable.register(si.fd, true);
+        SocketCleanable.register(si.fd);
     }
 
     /**
@@ -683,6 +683,9 @@ abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSoc
     protected void close() throws IOException {
         synchronized(fdLock) {
             if (fd != null) {
+                if (!stream) {
+                    ResourceManager.afterUdpClose();
+                }
                 if (fdUseCount == 0) {
                     if (closePending) {
                         return;
@@ -837,13 +840,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSoc
      */
     protected void socketClose() throws IOException {
         SocketCleanable.unregister(fd);
-        try {
-            socketClose0(false);
-        } finally {
-            if (!stream) {
-                ResourceManager.afterUdpClose();
-            }
-        }
+        socketClose0(false);
     }
 
     abstract void socketCreate(boolean stream) throws IOException;

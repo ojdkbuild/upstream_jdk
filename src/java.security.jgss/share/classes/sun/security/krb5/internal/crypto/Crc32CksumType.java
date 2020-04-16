@@ -32,6 +32,7 @@ package sun.security.krb5.internal.crypto;
 
 import sun.security.krb5.*;
 import sun.security.krb5.internal.*;
+import java.util.zip.CRC32;
 
 public class Crc32CksumType extends CksumType {
 
@@ -46,7 +47,7 @@ public class Crc32CksumType extends CksumType {
         return Checksum.CKSUMTYPE_CRC32;
     }
 
-    public boolean isKeyed() {
+    public boolean isSafe() {
         return false;
     }
 
@@ -62,15 +63,18 @@ public class Crc32CksumType extends CksumType {
         return 0;
     }
 
-    public byte[] calculateChecksum(byte[] data, int size,
-            byte[] key, int usage) {
+    public byte[] calculateChecksum(byte[] data, int size) {
         return crc32.byte2crc32sum_bytes(data, size);
     }
 
-    public boolean verifyChecksum(byte[] data, int size,
-            byte[] key, byte[] checksum, int usage) {
-        return CksumType.isChecksumEqual(checksum,
-                crc32.byte2crc32sum_bytes(data));
+    public byte[] calculateKeyedChecksum(byte[] data, int size,
+                                         byte[] key, int usage) {
+                                             return null;
+                                         }
+
+    public boolean verifyKeyedChecksum(byte[] data, int size,
+                                       byte[] key, byte[] checksum, int usage) {
+        return false;
     }
 
     public static byte[] int2quad(long input) {

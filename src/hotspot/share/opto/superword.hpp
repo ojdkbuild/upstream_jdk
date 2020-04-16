@@ -408,7 +408,7 @@ class SuperWord : public ResourceObj {
   void print_loop(bool whole);
   #endif
   // Find a memory reference to align the loop induction variable to.
-  MemNode* find_align_to_ref(Node_List &memops, int &idx);
+  MemNode* find_align_to_ref(Node_List &memops);
   // Calculate loop's iv adjustment for this memory ops.
   int get_iv_adjustment(MemNode* mem);
   // Can the preloop align the reference to position zero in the vector?

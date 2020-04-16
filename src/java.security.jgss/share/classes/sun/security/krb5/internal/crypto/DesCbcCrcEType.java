@@ -53,7 +53,7 @@ public class DesCbcCrcEType extends DesCbcEType {
     }
 
     public int checksumType() {
-        return Checksum.CKSUMTYPE_RSA_MD5;
+        return Checksum.CKSUMTYPE_CRC32;
     }
 
     public int checksumSize() {

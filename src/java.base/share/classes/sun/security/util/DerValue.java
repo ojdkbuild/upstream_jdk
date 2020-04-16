@@ -395,7 +395,7 @@ public class DerValue {
         if (fullyBuffered && in.available() != length)
             throw new IOException("extra data given to DerValue constructor");
 
-        byte[] bytes = IOUtils.readExactlyNBytes(in, length);
+        byte[] bytes = IOUtils.readFully(in, length, true);
 
         buffer = new DerInputBuffer(bytes, allowBER);
         return new DerInputStream(buffer);

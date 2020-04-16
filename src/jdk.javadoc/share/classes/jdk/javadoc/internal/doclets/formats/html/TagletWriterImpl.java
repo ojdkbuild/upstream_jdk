@@ -341,15 +341,12 @@ public class TagletWriterImpl extends TagletWriter {
     /**
      * {@inheritDoc}
      */
-    public Content throwsTagOutput(Element element, DocTree throwsTag, TypeMirror substituteType) {
+    public Content throwsTagOutput(Element element, DocTree throwsTag) {
         ContentBuilder body = new ContentBuilder();
         CommentHelper ch = utils.getCommentHelper(element);
         Element exception = ch.getException(configuration, throwsTag);
         Content excName;
-        if (substituteType != null) {
-           excName = htmlWriter.getLink(new LinkInfoImpl(configuration, LinkInfoImpl.Kind.MEMBER,
-                   substituteType));
-        } else if (exception == null) {
+        if (exception == null) {
             excName = new RawHtml(ch.getExceptionName(throwsTag).toString());
         } else if (exception.asType() == null) {
             excName = new RawHtml(utils.getFullyQualifiedName(exception));
@@ -416,13 +413,6 @@ public class TagletWriterImpl extends TagletWriter {
      */
     public BaseConfiguration configuration() {
         return configuration;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected TypeElement getCurrentPageElement() {
-        return htmlWriter.getCurrentPageElement();
     }
 
     @SuppressWarnings("preview")

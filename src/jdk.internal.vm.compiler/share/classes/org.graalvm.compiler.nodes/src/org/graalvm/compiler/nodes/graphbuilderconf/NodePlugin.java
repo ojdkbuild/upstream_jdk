@@ -24,11 +24,8 @@
 
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import java.util.function.Supplier;
-
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -229,10 +226,9 @@ public interface NodePlugin extends GraphBuilderPlugin {
      *
      * @param graph the graph being parsed
      * @param afterExceptionLoaded the last fixed node after loading the exception
-     * @param frameStateFunction a helper that produces a FrameState suitable for deopt
      * @return the last fixed node after instrumentation
      */
-    default FixedWithNextNode instrumentExceptionDispatch(StructuredGraph graph, FixedWithNextNode afterExceptionLoaded, Supplier<FrameState> frameStateFunction) {
+    default FixedWithNextNode instrumentExceptionDispatch(StructuredGraph graph, FixedWithNextNode afterExceptionLoaded) {
         return afterExceptionLoaded;
     }
 

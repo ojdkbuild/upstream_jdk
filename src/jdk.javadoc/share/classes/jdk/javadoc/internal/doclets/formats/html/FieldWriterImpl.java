@@ -115,7 +115,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
     @Override
     public Content getSignature(VariableElement field) {
         return new MemberSignature(field)
-                .addType(utils.asInstantiatedFieldType(typeElement, field))
+                .addType(field.asType())
                 .toContent();
     }
 
@@ -262,7 +262,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     protected void addSummaryType(Element member, Content tdSummaryType) {
-        addModifierAndType(member, utils.asInstantiatedFieldType(typeElement, (VariableElement)member), tdSummaryType);
+        addModifierAndType(member, member.asType(), tdSummaryType);
     }
 
     /**

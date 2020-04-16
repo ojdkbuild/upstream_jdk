@@ -79,7 +79,7 @@ typedef struct {
     XShmSegmentInfo     *shmSegInfo;    /* Shared Memory Segment Info */
     jint                bytesPerLine;   /* needed for ShMem lock */
     jboolean            xRequestSent;   /* true if x request is sent w/o XSync */
-    jlong               pmSize;
+    jint                pmSize;
 
     jboolean            usingShmPixmap;
     Drawable            pixmap;

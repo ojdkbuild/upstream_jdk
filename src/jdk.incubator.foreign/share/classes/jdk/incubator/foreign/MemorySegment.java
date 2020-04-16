@@ -145,10 +145,10 @@ public interface MemorySegment extends AutoCloseable {
     MemorySegment acquire();
 
     /**
-     * The thread owning this segment.
-     * @return the thread owning this segment.
+     * Is this segment accessible from the current thread?
+     * @return true, if this segment is accessible from the current thread.
      */
-    Thread ownerThread();
+    boolean isAccessible();
 
     /**
      * The size (in bytes) of this memory segment.
@@ -348,9 +348,10 @@ public interface MemorySegment extends AutoCloseable {
     allocateNative(layout.bytesSize(), layout.bytesAlignment());
      * }</pre></blockquote>
      *
-     * @implNote The block of off-heap memory associated with the returned native memory segment is initialized to zero.
-     * Moreover, a client is responsible to call the {@link MemorySegment#close()} on a native memory segment,
-     * to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so will result in off-heap memory leaks.
+     * @implNote The initialization state of the contents of the block of off-heap memory associated with the returned native memory
+     * segment is unspecified and should not be relied upon. Moreover, a client is responsible to call the {@link MemorySegment#close()}
+     * on a native memory segment, to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so
+     * will result in off-heap memory leaks.
      *
      * @param layout the layout of the off-heap memory block backing the native memory segment.
      * @return a new native memory segment.
@@ -368,9 +369,10 @@ public interface MemorySegment extends AutoCloseable {
     allocateNative(bytesSize, 1);
      * }</pre></blockquote>
      *
-     * @implNote The block of off-heap memory associated with the returned native memory segment is initialized to zero.
-     * Moreover, a client is responsible to call the {@link MemorySegment#close()} on a native memory segment,
-     * to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so will result in off-heap memory leaks.
+     * @implNote The initialization state of the contents of the block of off-heap memory associated with the returned native memory
+     * segment is unspecified and should not be relied upon. Moreover, a client is responsible to call the {@link MemorySegment#close()}
+     * on a native memory segment, to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so
+     * will result in off-heap memory leaks.
      *
      * @param bytesSize the size (in bytes) of the off-heap memory block backing the native memory segment.
      * @return a new native memory segment.
@@ -402,9 +404,10 @@ public interface MemorySegment extends AutoCloseable {
      * Creates a new native memory segment that models a newly allocated block of off-heap memory with given size and
      * alignment constraint (in bytes).
      *
-     * @implNote The block of off-heap memory associated with the returned native memory segment is initialized to zero.
-     * Moreover, a client is responsible to call the {@link MemorySegment#close()} on a native memory segment,
-     * to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so will result in off-heap memory leaks.
+     * @implNote The initialization state of the contents of the block of off-heap memory associated with the returned native memory
+     * segment is unspecified and should not be relied upon. Moreover, a client is responsible to call the {@link MemorySegment#close()}
+     * on a native memory segment, to make sure the backing off-heap memory block is deallocated accordingly. Failure to do so
+     * will result in off-heap memory leaks.
      *
      * @param bytesSize the size (in bytes) of the off-heap memory block backing the native memory segment.
      * @param alignmentBytes the alignment constraint (in bytes) of the off-heap memory block backing the native memory segment.

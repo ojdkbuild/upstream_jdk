@@ -97,7 +97,7 @@ abstract class AbstractPlainDatagramSocketImpl extends DatagramSocketImpl
         fd = new FileDescriptor();
         try {
             datagramSocketCreate();
-            SocketCleanable.register(fd, false);
+            SocketCleanable.register(fd);
         } catch (SocketException ioe) {
             ResourceManager.afterUdpClose();
             fd = null;

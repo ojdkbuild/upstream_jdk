@@ -128,7 +128,7 @@ public class CCacheInputStream extends KrbDataInputStream implements FileCCacheC
             length--;
         for (int i = 0; i <= length; i++) {
             namelength = readLength4();
-            byte[] bytes = IOUtils.readExactlyNBytes(this, namelength);
+            byte[] bytes = IOUtils.readFully(this, namelength, true);
             result.add(new String(bytes));
         }
         if (result.isEmpty()) {
@@ -186,7 +186,7 @@ public class CCacheInputStream extends KrbDataInputStream implements FileCCacheC
         if (version == KRB5_FCC_FVNO_3)
             read(2); /* keytype recorded twice in fvno 3 */
         keyLen = readLength4();
-        byte[] bytes = IOUtils.readExactlyNBytes(this, keyLen);
+        byte[] bytes = IOUtils.readFully(this, keyLen, true);
         return new EncryptionKey(bytes, keyType, version);
     }
 
@@ -239,7 +239,7 @@ public class CCacheInputStream extends KrbDataInputStream implements FileCCacheC
             for (int i = 0; i < num; i++) {
                 adtype = read(2);
                 adlength = readLength4();
-                data = IOUtils.readExactlyNBytes(this, adlength);
+                data = IOUtils.readFully(this, adlength, true);
                 auData.add(new AuthorizationDataEntry(adtype, data));
             }
             return auData.toArray(new AuthorizationDataEntry[auData.size()]);
@@ -253,7 +253,7 @@ public class CCacheInputStream extends KrbDataInputStream implements FileCCacheC
         if (length == 0) {
             return null;
         } else {
-            return IOUtils.readExactlyNBytes(this, length);
+            return IOUtils.readFully(this, length, true);
         }
     }
 

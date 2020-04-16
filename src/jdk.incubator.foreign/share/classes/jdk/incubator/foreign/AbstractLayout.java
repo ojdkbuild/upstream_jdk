@@ -93,11 +93,6 @@ abstract class AbstractLayout implements MemoryLayout {
     }
 
     @Override
-    public boolean hasSize() {
-        return size.isPresent();
-    }
-
-    @Override
     public long bitSize() {
         return size.orElseThrow(this::badSizeException);
     }
