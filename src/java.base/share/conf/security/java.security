@@ -318,6 +318,8 @@ keystore.type.compat=true
 #
 package.access=sun.misc.,\
                sun.reflect.,\
+               org.GNOME.Accessibility.,\
+               org.GNOME.Bonobo.,\
 
 #
 # List of comma-separated packages that start with or equal this string
@@ -330,6 +332,8 @@ package.access=sun.misc.,\
 #
 package.definition=sun.misc.,\
                    sun.reflect.,\
+                   org.GNOME.Accessibility.,\
+                   org.GNOME.Bonobo.,\
 
 #
 # Determines whether this properties file can be appended to
