@@ -23,19 +23,11 @@
 
 package pkg2;
 
-abstract class UndocumentedGenericParent<T, E extends Throwable, F extends Throwable> {
-    /**
-     * A field.
-     */
-    public T f;
-
+abstract class UndocumentedGenericParent<T> {
     /**
      * Returns some value.
      *
-     * @param t a parameter
      * @return some value
-     * @throws E a generic error
-     * @throws IllegalStateException illegal state
      */
-    protected abstract T parentMethod(T t) throws F, E, IllegalStateException;
+    protected abstract String parentMethod();
 }

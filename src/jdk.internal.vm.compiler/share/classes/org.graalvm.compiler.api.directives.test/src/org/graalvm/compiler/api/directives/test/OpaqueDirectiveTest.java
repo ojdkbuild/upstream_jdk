@@ -29,6 +29,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -37,8 +40,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.junit.Assert;
-import org.junit.Test;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 /**
  * Tests for {@link GraalDirectives#opaque}.
@@ -130,8 +133,8 @@ public class OpaqueDirectiveTest extends GraalCompilerTest {
     }
 
     @Override
-    protected OptimisticOptimizations getOptimisticOptimizations() {
-        return OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.RemoveNeverExecutedCode);
+    protected HighTierContext getDefaultHighTierContext() {
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL.remove(Optimization.RemoveNeverExecutedCode));
     }
 
     @Override

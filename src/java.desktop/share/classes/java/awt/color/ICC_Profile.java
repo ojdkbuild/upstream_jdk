@@ -35,7 +35,6 @@
 
 package java.awt.color;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -1018,25 +1017,42 @@ public class ICC_Profile implements Serializable {
 
 
     static byte[] getProfileDataFromStream(InputStream s) throws IOException {
+    byte[] profileData;
+    int profileSize;
 
-        BufferedInputStream bis = new BufferedInputStream(s);
-        bis.mark(128);
+        byte[] header = new byte[128];
+        int bytestoread = 128;
+        int bytesread = 0;
+        int n;
 
-        byte[] header = bis.readNBytes(128);
+        while (bytestoread != 0) {
+            if ((n = s.read(header, bytesread, bytestoread)) < 0) {
+                return null;
+            }
+            bytesread += n;
+            bytestoread -= n;
+        }
         if (header[36] != 0x61 || header[37] != 0x63 ||
             header[38] != 0x73 || header[39] != 0x70) {
             return null;   /* not a valid profile */
         }
-        int profileSize = ((header[0] & 0xff) << 24) |
-                          ((header[1] & 0xff) << 16) |
-                          ((header[2] & 0xff) << 8) |
-                          (header[3] & 0xff);
-        bis.reset();
-        try {
-            return bis.readNBytes(profileSize);
-        } catch (OutOfMemoryError e) {
-            throw new IOException("Color profile is too big");
+        profileSize = ((header[0] & 0xff) << 24) |
+                      ((header[1] & 0xff) << 16) |
+                      ((header[2] & 0xff) <<  8) |
+                       (header[3] & 0xff);
+        profileData = new byte[profileSize];
+        System.arraycopy(header, 0, profileData, 0, 128);
+        bytestoread = profileSize - 128;
+        bytesread = 128;
+        while (bytestoread != 0) {
+            if ((n = s.read(profileData, bytesread, bytestoread)) < 0) {
+                return null;
+            }
+            bytesread += n;
+            bytestoread -= n;
         }
+
+        return profileData;
     }
 
     /**

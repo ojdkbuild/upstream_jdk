@@ -67,8 +67,7 @@ void JNICALL VMInit(jvmtiEnv* jvmti, JNIEnv* jni, jthread thread) {
     jvmti->RunAgentThread(agent_thread, GenerateEventsThread, NULL, JVMTI_THREAD_NORM_PRIORITY);
 }
 
-JNIEXPORT
-jint JNICALL Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
+jint Agent_OnLoad(JavaVM* vm, char* options, void* reserved) {
     jvmtiEnv* jvmti;
     vm->GetEnv((void**)&jvmti, JVMTI_VERSION_1_0);
 

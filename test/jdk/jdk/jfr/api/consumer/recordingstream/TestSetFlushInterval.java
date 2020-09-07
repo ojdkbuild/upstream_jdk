@@ -23,16 +23,40 @@
  * questions.
  */
 
-package jdk.internal.access;
+package jdk.jfr.api.consumer.recordingstream;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.time.Duration;
+
+import jdk.jfr.consumer.RecordingStream;
+import jdk.test.lib.jfr.EventNames;
 
 /**
- * Interface to specify methods for accessing {@code ObjectInputStream}.
+ * @test
+ * @summary Tests RecordingStream::setFlushInterval
+ * @key jfr
+ * @requires vm.hasJFR
+ * @library /test/lib
+ * @run main/othervm jdk.jfr.api.consumer.recordingstream.TestSetFlushInterval
  */
-@FunctionalInterface
-public interface JavaObjectInputStreamReadString {
-    String readString(ObjectInputStream ois) throws IOException;
-}
+public class TestSetFlushInterval {
 
+    public static void main(String... args) throws Exception {
+        Duration expectedDuration = Duration.ofMillis(1001);
+        try (RecordingStream r = new RecordingStream()) {
+            r.setFlushInterval(expectedDuration);
+            r.enable(EventNames.ActiveRecording);
+            r.onEvent(e -> {
+                System.out.println(e);
+                Duration duration = e.getDuration("flushInterval");
+                if (expectedDuration.equals(duration)) {
+                    System.out.println("Closing recording");
+                    r.close();
+                    return;
+                }
+                System.out.println("Flush interval not set, was " + duration +
+                                   ", but expected " + expectedDuration);
+            });
+            r.start();
+        }
+    }
+}

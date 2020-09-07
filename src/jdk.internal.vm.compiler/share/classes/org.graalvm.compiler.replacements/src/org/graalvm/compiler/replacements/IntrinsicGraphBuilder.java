@@ -155,16 +155,8 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     @Override
     public void push(JavaKind kind, ValueNode value) {
         assert kind != JavaKind.Void;
-        GraalError.guarantee(returnValue == null, "can only push one value");
+        assert returnValue == null;
         returnValue = value;
-    }
-
-    @Override
-    public ValueNode pop(JavaKind slotKind) {
-        GraalError.guarantee(returnValue != null, "no value pushed");
-        ValueNode result = returnValue;
-        returnValue = null;
-        return result;
     }
 
     @Override

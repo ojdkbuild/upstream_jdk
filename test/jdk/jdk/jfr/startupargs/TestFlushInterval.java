@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import java.time.Duration;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
-import jdk.jfr.internal.PlatformRecording;
-import jdk.jfr.internal.PrivateAccess;
 
 /**
  * @test
@@ -38,17 +36,14 @@ import jdk.jfr.internal.PrivateAccess;
  * @key jfr
  * @requires vm.hasJFR
  * @library /test/lib /test/jdk
- * @modules jdk.jfr/jdk.jfr.internal
- * @run main/othervm -XX:StartFlightRecording=flush-interval=2s jdk.jfr.startupargs.TestFlushInterval
+ * @run main/othervm -XX:StartFlightRecording=flush-interval=1s jdk.jfr.startupargs.TestFlushInterval
  */
 public class TestFlushInterval {
 
     public static void main(String[] args) throws Exception {
         for (Recording r : FlightRecorder.getFlightRecorder().getRecordings()) {
-            PrivateAccess p = PrivateAccess.getInstance();
-            PlatformRecording pr = p.getPlatformRecording(r);
-            Duration d = pr.getFlushInterval();
-            if (d.equals(Duration.ofSeconds(2))) {
+            Duration d = r.getFlushInterval();
+            if (d.equals(Duration.ofSeconds(1))) {
                 return; //OK
             } else {
                 throw new Exception("Unexpected flush-interval " + d);

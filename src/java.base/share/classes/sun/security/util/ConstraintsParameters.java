@@ -31,9 +31,6 @@ import java.security.AlgorithmParameters;
 import java.security.Key;
 import java.security.Timestamp;
 import java.security.cert.X509Certificate;
-import java.security.interfaces.ECKey;
-import java.security.interfaces.XECKey;
-import java.security.spec.NamedParameterSpec;
 import java.util.Date;
 
 /**
@@ -52,8 +49,8 @@ public class ConstraintsParameters {
     private final String algorithm;
     // AlgorithmParameters to the algorithm being checked
     private final AlgorithmParameters algParams;
-    // Key being checked against constraints
-    private final Key key;
+    // Public Key being checked against constraints
+    private final Key publicKey;
 
     /*
      * New values that are checked against constraints that the current public
@@ -69,9 +66,6 @@ public class ConstraintsParameters {
     // Timestamp of the signed JAR file
     private final Timestamp jarTimestamp;
     private final String variant;
-    // Named Curve
-    private final String[] curveStr;
-    private static final String[] EMPTYLIST = new String[0];
 
     public ConstraintsParameters(X509Certificate c, boolean match,
             Date pkixdate, Timestamp jarTime, String variant) {
@@ -82,20 +76,14 @@ public class ConstraintsParameters {
         this.variant = (variant == null ? Validator.VAR_GENERIC : variant);
         algorithm = null;
         algParams = null;
-        key = null;
-        if (c != null) {
-            curveStr = getNamedCurveFromKey(c.getPublicKey());
-        } else {
-            curveStr = EMPTYLIST;
-        }
+        publicKey = null;
     }
 
     public ConstraintsParameters(String algorithm, AlgorithmParameters params,
             Key key, String variant) {
         this.algorithm = algorithm;
         algParams = params;
-        this.key = key;
-        curveStr = getNamedCurveFromKey(key);
+        this.publicKey = key;
         cert = null;
         trustedMatch = false;
         pkixDate = null;
@@ -121,10 +109,9 @@ public class ConstraintsParameters {
         return algParams;
     }
 
-    public Key getKey() {
-        return key;
+    public Key getPublicKey() {
+        return publicKey;
     }
-
     // Returns if the trust anchor has a match if anchor checking is enabled.
     public boolean isTrustedMatch() {
         return trustedMatch;
@@ -145,47 +132,4 @@ public class ConstraintsParameters {
     public String getVariant() {
         return variant;
     }
-
-    public String[] getNamedCurve() {
-        return curveStr;
-    }
-
-    public static String[] getNamedCurveFromKey(Key key) {
-        if (key instanceof ECKey) {
-            NamedCurve nc = CurveDB.lookup(((ECKey)key).getParams());
-            return (nc == null ? EMPTYLIST : CurveDB.getNamesByOID(nc.getObjectId()));
-        } else if (key instanceof XECKey) {
-            String[] s = {
-                    ((NamedParameterSpec)((XECKey)key).getParams()).getName()
-            };
-            return s;
-        } else {
-            return EMPTYLIST;
-        }
-    }
-
-    public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append("Cert:       ");
-        if (cert != null) {
-            s.append(cert.toString());
-            s.append("\nSigAlgo:    ");
-            s.append(cert.getSigAlgName());
-        } else {
-            s.append("None");
-        }
-        s.append("\nAlgParams:  ");
-        if (getAlgParams() != null) {
-            getAlgParams().toString();
-        } else {
-            s.append("None");
-        }
-        s.append("\nNamedCurves: ");
-        for (String c : getNamedCurve()) {
-            s.append(c + " ");
-        }
-        s.append("\nVariant:    " + getVariant());
-        return s.toString();
-    }
-
 }

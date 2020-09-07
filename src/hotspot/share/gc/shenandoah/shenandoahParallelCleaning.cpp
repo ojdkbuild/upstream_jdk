@@ -41,6 +41,7 @@ ShenandoahClassUnloadingTask::ShenandoahClassUnloadingTask(BoolObjectClosure* is
 }
 
 void ShenandoahClassUnloadingTask::work(uint worker_id) {
+  ShenandoahEvacOOMScope scope;
   _code_cache_task.work(worker_id);
   // Clean all klasses that were not unloaded.
   // The weak metadata in klass doesn't need to be

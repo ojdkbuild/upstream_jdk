@@ -24,8 +24,6 @@
  */
 package java.lang.invoke;
 
-import jdk.internal.access.JavaNioAccess;
-import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.Preconditions;
 import jdk.internal.vm.annotation.ForceInline;
@@ -39,8 +37,6 @@ import static java.lang.invoke.MethodHandleStatics.UNSAFE;
 #warn
 
 final class VarHandleByteArrayAs$Type$s extends VarHandleByteArrayBase {
-
-    static JavaNioAccess nioAccess = SharedSecrets.getJavaNioAccess();
 
     static final int ALIGN = $BoxType$.BYTES - 1;
 
@@ -533,7 +529,6 @@ final class VarHandleByteArrayAs$Type$s extends VarHandleByteArrayBase {
 
         @ForceInline
         static int index(ByteBuffer bb, int index) {
-            nioAccess.checkSegment(bb);
             return Preconditions.checkIndex(index, UNSAFE.getInt(bb, BUFFER_LIMIT) - ALIGN, null);
         }
 
@@ -541,7 +536,7 @@ final class VarHandleByteArrayAs$Type$s extends VarHandleByteArrayBase {
         static int indexRO(ByteBuffer bb, int index) {
             if (UNSAFE.getBoolean(bb, BYTE_BUFFER_IS_READ_ONLY))
                 throw new ReadOnlyBufferException();
-            return index(bb, index);
+            return Preconditions.checkIndex(index, UNSAFE.getInt(bb, BUFFER_LIMIT) - ALIGN, null);
         }
 
         @ForceInline

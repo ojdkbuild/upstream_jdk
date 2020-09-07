@@ -108,8 +108,8 @@ template <typename T> struct CountLeadingZerosImpl<T, 4> {
 
 template <typename T> struct CountLeadingZerosImpl<T, 8> {
   static unsigned doit(T v) {
-#ifdef _LP64
     unsigned long index;
+#ifdef _LP64
     _BitScanReverse64(&index, v);
     return 63u - index;
 #else

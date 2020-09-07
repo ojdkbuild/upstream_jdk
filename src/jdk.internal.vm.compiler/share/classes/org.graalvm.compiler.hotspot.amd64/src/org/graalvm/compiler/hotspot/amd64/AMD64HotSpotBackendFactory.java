@@ -133,7 +133,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                 stampProvider = createStampProvider();
             }
             try (InitTimer rt = timer("create GC provider")) {
-                gc = createGCProvider(config, metaAccess);
+                gc = createGCProvider(config);
             }
 
             Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, gc);

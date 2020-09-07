@@ -289,7 +289,7 @@ public class MacDmgBundler extends MacBaseInstallerBundler {
                 protoDMG.getAbsolutePath(),
                 hdiUtilVerbosityFlag,
                 "-mountroot", imagesRoot.getAbsolutePath());
-        IOUtils.exec(pb, false, null, true);
+        IOUtils.exec(pb);
 
         File mountedRoot = new File(imagesRoot.getAbsolutePath(),
                     APP_NAME.fetchFrom(params));

@@ -373,7 +373,7 @@ public abstract class SSLContextImpl extends SSLContextSpi {
     private static List<CipherSuite> getApplicableCipherSuites(
             Collection<CipherSuite> allowedCipherSuites,
             List<ProtocolVersion> protocols) {
-        LinkedHashSet<CipherSuite> suites = new LinkedHashSet<>();
+        TreeSet<CipherSuite> suites = new TreeSet<>();
         if (protocols != null && (!protocols.isEmpty())) {
             for (CipherSuite suite : allowedCipherSuites) {
                 if (!suite.isAvailable()) {

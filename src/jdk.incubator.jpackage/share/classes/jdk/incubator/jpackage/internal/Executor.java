@@ -48,11 +48,6 @@ final public class Executor {
         return this;
     }
 
-    Executor setWaitBeforeOutput(boolean v) {
-        waitBeforeOutput = v;
-        return this;
-    }
-
     Executor setProcessBuilder(ProcessBuilder v) {
         pb = v;
         return this;
@@ -92,16 +87,6 @@ final public class Executor {
 
         Log.verbose(String.format("Running %s", createLogMessage(pb)));
         Process p = pb.start();
-
-        int code = 0;
-        if (waitBeforeOutput) {
-            try {
-                code = p.waitFor();
-            } catch (InterruptedException ex) {
-                Log.verbose(ex);
-                throw new RuntimeException(ex);
-            }
-        }
 
         if (needProcessOutput) {
             try (var br = new BufferedReader(new InputStreamReader(
@@ -146,10 +131,7 @@ final public class Executor {
         }
 
         try {
-            if (!waitBeforeOutput) {
-                code = p.waitFor();
-            }
-            return code;
+            return p.waitFor();
         } catch (InterruptedException ex) {
             Log.verbose(ex);
             throw new RuntimeException(ex);
@@ -175,7 +157,6 @@ final public class Executor {
 
     private ProcessBuilder pb;
     private boolean saveOutput;
-    private boolean waitBeforeOutput;
     private List<String> output;
     private Consumer<Stream<String>> outputConsumer;
 }

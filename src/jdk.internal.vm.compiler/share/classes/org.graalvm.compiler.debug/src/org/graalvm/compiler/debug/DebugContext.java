@@ -53,7 +53,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -1843,46 +1842,23 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Gets the name to use for a class based on whether it appears to be an obfuscated name. The
-     * heuristic for an obfuscated name is that it is less than 6 characters in length and consists
-     * only of lower case letters.
-     */
-    private static String getBaseName(Class<?> c) {
-        String simpleName = c.getSimpleName();
-        if (simpleName.length() < 6) {
-            for (int i = 0; i < simpleName.length(); i++) {
-                if (!Character.isLowerCase(simpleName.charAt(0))) {
-                    return simpleName;
-                }
-            }
-            // Looks like an obfuscated simple class name so use qualified class name
-            return c.getName();
-        }
-        return simpleName;
-    }
-
-    /**
      * There are paths where construction of formatted class names are common and the code below is
      * surprisingly expensive, so compute it once and cache it.
      */
     private static final ClassValue<String> formattedClassName = new ClassValue<String>() {
         @Override
         protected String computeValue(Class<?> c) {
-            String baseName = getBaseName(c);
-            if (Character.isLowerCase(baseName.charAt(0))) {
-                // Looks like an obfuscated simple class name so use qualified class name
-                baseName = c.getName();
-            }
+            final String simpleName = c.getSimpleName();
             Class<?> enclosingClass = c.getEnclosingClass();
             if (enclosingClass != null) {
                 String prefix = "";
                 while (enclosingClass != null) {
-                    prefix = getBaseName(enclosingClass) + "_" + prefix;
+                    prefix = enclosingClass.getSimpleName() + "_" + prefix;
                     enclosingClass = enclosingClass.getEnclosingClass();
                 }
-                return prefix + baseName;
+                return prefix + simpleName;
             } else {
-                return baseName;
+                return simpleName;
             }
         }
     };
@@ -2160,18 +2136,6 @@ public final class DebugContext implements AutoCloseable {
             out.printf("%-" + String.valueOf(maxKeyWidth) + "s = %20s%n", e.getKey(), e.getValue());
         }
         out.println();
-    }
-
-    public Map<MetricKey, Long> getMetricsSnapshot() {
-        Map<MetricKey, Long> res = new HashMap<>();
-        for (MetricKey key : KeyRegistry.getKeys()) {
-            int index = ((AbstractKey) key).getIndex();
-            if (index < metricValues.length && metricValues[index] != 0) {
-                long value = metricValues[index];
-                res.put(key, value);
-            }
-        }
-        return res;
     }
 
     @SuppressWarnings({"unused", "unchecked"})

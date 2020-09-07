@@ -733,8 +733,6 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
             container.close();
         }
         containers.clear();
-        pathsAndContainersByLocationAndRelativeDirectory.clear();
-        nonIndexingContainersByLocation.clear();
         contentCache.clear();
     }
 

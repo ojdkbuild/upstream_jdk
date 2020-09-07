@@ -119,4 +119,10 @@ public:
   ~ShenandoahEvacOOMScope();
 };
 
+class ShenandoahEvacOOMScopeLeaver : public StackObj {
+public:
+  ShenandoahEvacOOMScopeLeaver();
+  ~ShenandoahEvacOOMScopeLeaver();
+};
+
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHEVACOOMHANDLER_HPP

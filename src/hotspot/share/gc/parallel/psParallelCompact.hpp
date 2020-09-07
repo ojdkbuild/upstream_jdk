@@ -630,25 +630,25 @@ inline bool ParallelCompactData::RegionData::claim()
 }
 
 inline bool ParallelCompactData::RegionData::mark_normal() {
-  return Atomic::cmpxchg(&_shadow_state, UnusedRegion, NormalRegion) == UnusedRegion;
+  return Atomic::cmpxchg(&_shadow_state, UnusedRegion, NormalRegion, memory_order_relaxed) == UnusedRegion;
 }
 
 inline bool ParallelCompactData::RegionData::mark_shadow() {
   if (_shadow_state != UnusedRegion) return false;
-  return Atomic::cmpxchg(&_shadow_state, UnusedRegion, ShadowRegion) == UnusedRegion;
+  return Atomic::cmpxchg(&_shadow_state, UnusedRegion, ShadowRegion, memory_order_relaxed) == UnusedRegion;
 }
 
 inline void ParallelCompactData::RegionData::mark_filled() {
-  int old = Atomic::cmpxchg(&_shadow_state, ShadowRegion, FilledShadow);
+  int old = Atomic::cmpxchg(&_shadow_state, ShadowRegion, FilledShadow, memory_order_relaxed);
   assert(old == ShadowRegion, "Fail to mark the region as filled");
 }
 
 inline bool ParallelCompactData::RegionData::mark_copied() {
-  return Atomic::cmpxchg(&_shadow_state, FilledShadow, CopiedShadow) == FilledShadow;
+  return Atomic::cmpxchg(&_shadow_state, FilledShadow, CopiedShadow, memory_order_relaxed) == FilledShadow;
 }
 
 void ParallelCompactData::RegionData::shadow_to_normal() {
-  int old = Atomic::cmpxchg(&_shadow_state, ShadowRegion, NormalRegion);
+  int old = Atomic::cmpxchg(&_shadow_state, ShadowRegion, NormalRegion, memory_order_relaxed);
   assert(old == ShadowRegion, "Fail to mark the region as finish");
 }
 

@@ -946,19 +946,19 @@ Node *LoopNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
 #ifdef ASSERT
 void LoopNode::verify_strip_mined(int expect_skeleton) const {
+  if (!is_valid_counted_loop()) {
+    return; // Skip malformed counted loop
+  }
   const OuterStripMinedLoopNode* outer = NULL;
   const CountedLoopNode* inner = NULL;
   if (is_strip_mined()) {
-    if (!is_valid_counted_loop()) {
-      return; // Skip malformed counted loop
-    }
     assert(is_CountedLoop(), "no Loop should be marked strip mined");
     inner = as_CountedLoop();
     outer = inner->in(LoopNode::EntryControl)->as_OuterStripMinedLoop();
   } else if (is_OuterStripMinedLoop()) {
     outer = this->as_OuterStripMinedLoop();
     inner = outer->unique_ctrl_out()->as_CountedLoop();
-    assert(inner->is_valid_counted_loop() && inner->is_strip_mined(), "OuterStripMinedLoop should have been removed");
+    assert(inner->is_valid_counted_loop(), "OuterStripMinedLoop should have been removed");
     assert(!is_strip_mined(), "outer loop shouldn't be marked strip mined");
   }
   if (inner != NULL || outer != NULL) {
@@ -1240,7 +1240,7 @@ Node* CountedLoopNode::match_incr_with_optional_truncation(
 }
 
 LoopNode* CountedLoopNode::skip_strip_mined(int expect_skeleton) {
-  if (is_strip_mined() && is_valid_counted_loop()) {
+  if (is_strip_mined()) {
     verify_strip_mined(expect_skeleton);
     return in(EntryControl)->as_Loop();
   }
@@ -2505,14 +2505,13 @@ uint IdealLoopTree::est_loop_flow_merge_sz() const {
 
     for (uint k = 0; k < outcnt; k++) {
       Node* out = node->raw_out(k);
-      if (out == NULL) continue;
+
       if (out->is_CFG()) {
         if (!is_member(_phase->get_loop(out))) {
           ctrl_edge_out_cnt++;
         }
-      } else if (_phase->has_ctrl(out)) {
+      } else {
         Node* ctrl = _phase->get_ctrl(out);
-        assert(ctrl != NULL, "must be");
         assert(ctrl->is_CFG(), "must be");
         if (!is_member(_phase->get_loop(ctrl))) {
           data_edge_out_cnt++;

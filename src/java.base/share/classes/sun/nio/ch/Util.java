@@ -37,7 +37,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
-import jdk.internal.access.foreign.MemorySegmentProxy;
 import jdk.internal.misc.TerminatingThreadLocal;
 import jdk.internal.misc.Unsafe;
 import sun.security.action.GetPropertyAction;
@@ -417,7 +416,7 @@ public class Util {
                                              long.class,
                                              FileDescriptor.class,
                                              Runnable.class,
-                                             boolean.class, MemorySegmentProxy.class});
+                                             boolean.class });
                         ctor.setAccessible(true);
                         directByteBufferConstructor = ctor;
                     } catch (ClassNotFoundException   |
@@ -444,7 +443,7 @@ public class Util {
                              addr,
                              fd,
                              unmapper,
-                             isSync, null});
+                             isSync});
         } catch (InstantiationException |
                  IllegalAccessException |
                  InvocationTargetException e) {
@@ -465,7 +464,7 @@ public class Util {
                                              long.class,
                                              FileDescriptor.class,
                                              Runnable.class,
-                                             boolean.class, MemorySegmentProxy.class });
+                                             boolean.class });
                         ctor.setAccessible(true);
                         directByteBufferRConstructor = ctor;
                     } catch (ClassNotFoundException |
@@ -492,7 +491,7 @@ public class Util {
                              addr,
                              fd,
                              unmapper,
-                             isSync, null});
+                             isSync});
         } catch (InstantiationException |
                  IllegalAccessException |
                  InvocationTargetException e) {

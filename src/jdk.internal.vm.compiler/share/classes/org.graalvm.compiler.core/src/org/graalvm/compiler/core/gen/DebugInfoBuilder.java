@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
-import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
@@ -81,7 +80,7 @@ public class DebugInfoBuilder {
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
-    public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge) {
+    public LIRFrameState build(FrameState topState, LabelRef exceptionEdge) {
         assert virtualObjects.size() == 0;
         assert objectStates.size() == 0;
         assert pendingVirtualObjects.size() == 0;
@@ -101,8 +100,7 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
-        assert verifyFrameState(node, topState);
-        BytecodeFrame frame = computeFrameForState(node, topState);
+        BytecodeFrame frame = computeFrameForState(topState);
 
         VirtualObject[] virtualObjectsArray = null;
         if (virtualObjects.size() != 0) {
@@ -225,18 +223,7 @@ public class DebugInfoBuilder {
         return new LIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 
-    /**
-     * Perform platform dependent verification of the FrameState.
-     *
-     * @param node the node using the state
-     * @param topState the state
-     * @return true if the validation succeeded
-     */
-    protected boolean verifyFrameState(NodeWithState node, FrameState topState) {
-        return true;
-    }
-
-    protected BytecodeFrame computeFrameForState(NodeWithState node, FrameState state) {
+    protected BytecodeFrame computeFrameForState(FrameState state) {
         try {
             assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
             assert state.bci != BytecodeFrame.UNKNOWN_BCI;
@@ -262,7 +249,7 @@ public class DebugInfoBuilder {
 
             BytecodeFrame caller = null;
             if (state.outerFrameState() != null) {
-                caller = computeFrameForState(node, state.outerFrameState());
+                caller = computeFrameForState(state.outerFrameState());
             }
 
             if (!state.canProduceBytecodeFrame()) {

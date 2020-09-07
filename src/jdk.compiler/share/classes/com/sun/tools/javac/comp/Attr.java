@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import com.sun.tools.javac.code.Types.FunctionDescriptorLookupError;
 import com.sun.tools.javac.comp.ArgumentAttr.LocalCacheContext;
 import com.sun.tools.javac.comp.Check.CheckContext;
 import com.sun.tools.javac.comp.DeferredAttr.AttrMode;
-import com.sun.tools.javac.comp.MatchBindingsComputer.MatchBindings;
+import com.sun.tools.javac.comp.MatchBindingsComputer.BindingSymbol;
 import com.sun.tools.javac.jvm.*;
 import static com.sun.tools.javac.resources.CompilerProperties.Fragments.Diamond;
 import static com.sun.tools.javac.resources.CompilerProperties.Fragments.DiamondInvalidArg;
@@ -642,8 +642,6 @@ public class Attr extends JCTree.Visitor {
      */
     Type result;
 
-    MatchBindings matchBindings = MatchBindingsComputer.EMPTY;
-
     /** Visitor method: attribute a tree, catching any completion failure
      *  exceptions. Return the tree's type.
      *
@@ -662,8 +660,6 @@ public class Attr extends JCTree.Visitor {
             } else {
                 tree.accept(this);
             }
-            matchBindings = matchBindingsComputer.finishBindings(tree,
-                                                                 matchBindings);
             if (tree == breakTree &&
                     resultInfo.checkContext.deferredAttrContext().mode == AttrMode.CHECK) {
                 breakTreeFound(copyEnv(env));
@@ -1422,18 +1418,18 @@ public class Attr extends JCTree.Visitor {
         attribExpr(tree.cond, env, syms.booleanType);
         if (!breaksOutOf(tree, tree.body)) {
             //include condition's body when false after the while, if cannot get out of the loop
-            MatchBindings condBindings = matchBindings;
-            condBindings.bindingsWhenFalse.forEach(env.info.scope::enter);
-            condBindings.bindingsWhenFalse.forEach(BindingSymbol::preserveBinding);
+            List<BindingSymbol> bindings = matchBindingsComputer.getMatchBindings(tree.cond, false);
+
+            bindings.forEach(env.info.scope::enter);
+            bindings.forEach(BindingSymbol::preserveBinding);
         }
         result = null;
     }
 
     public void visitWhileLoop(JCWhileLoop tree) {
         attribExpr(tree.cond, env, syms.booleanType);
-        MatchBindings condBindings = matchBindings;
         // include condition's bindings when true in the body:
-        Env<AttrContext> whileEnv = bindingEnv(env, condBindings.bindingsWhenTrue);
+        Env<AttrContext> whileEnv = bindingEnv(env, matchBindingsComputer.getMatchBindings(tree.cond, true));
         try {
             attribStat(tree.body, whileEnv.dup(tree));
         } finally {
@@ -1441,8 +1437,11 @@ public class Attr extends JCTree.Visitor {
         }
         if (!breaksOutOf(tree, tree.body)) {
             //include condition's bindings when false after the while, if cannot get out of the loop
-            condBindings.bindingsWhenFalse.forEach(env.info.scope::enter);
-            condBindings.bindingsWhenFalse.forEach(BindingSymbol::preserveBinding);
+            List<BindingSymbol> bindings =
+                    matchBindingsComputer.getMatchBindings(tree.cond, false);
+
+            bindings.forEach(env.info.scope::enter);
+            bindings.forEach(BindingSymbol::preserveBinding);
         }
         result = null;
     }
@@ -1455,15 +1454,15 @@ public class Attr extends JCTree.Visitor {
     public void visitForLoop(JCForLoop tree) {
         Env<AttrContext> loopEnv =
             env.dup(env.tree, env.info.dup(env.info.scope.dup()));
-        MatchBindings condBindings = MatchBindingsComputer.EMPTY;
         try {
             attribStats(tree.init, loopEnv);
+            List<BindingSymbol> matchBindings = List.nil();
             if (tree.cond != null) {
                 attribExpr(tree.cond, loopEnv, syms.booleanType);
                 // include condition's bindings when true in the body and step:
-                condBindings = matchBindings;
+                matchBindings = matchBindingsComputer.getMatchBindings(tree.cond, true);
             }
-            Env<AttrContext> bodyEnv = bindingEnv(loopEnv, condBindings.bindingsWhenTrue);
+            Env<AttrContext> bodyEnv = bindingEnv(loopEnv, matchBindings);
             try {
                 bodyEnv.tree = tree; // before, we were not in loop!
                 attribStats(tree.step, bodyEnv);
@@ -1478,8 +1477,11 @@ public class Attr extends JCTree.Visitor {
         }
         if (!breaksOutOf(tree, tree.body)) {
             //include condition's body when false after the while, if cannot get out of the loop
-            condBindings.bindingsWhenFalse.forEach(env.info.scope::enter);
-            condBindings.bindingsWhenFalse.forEach(BindingSymbol::preserveBinding);
+            List<BindingSymbol> bindings =
+                    matchBindingsComputer.getMatchBindings(tree.cond, false);
+
+            bindings.forEach(env.info.scope::enter);
+            bindings.forEach(BindingSymbol::preserveBinding);
         }
     }
 
@@ -1816,7 +1818,6 @@ public class Attr extends JCTree.Visitor {
 
     public void visitConditional(JCConditional tree) {
         Type condtype = attribExpr(tree.cond, env, syms.booleanType);
-        MatchBindings condBindings = matchBindings;
 
         tree.polyKind = (!allowPoly ||
                 pt().hasTag(NONE) && pt() != Type.recoveryType && pt() != Infer.anyPoly ||
@@ -1840,24 +1841,20 @@ public class Attr extends JCTree.Visitor {
         // include x's bindings when false in z
 
         Type truetype;
-        Env<AttrContext> trueEnv = bindingEnv(env, condBindings.bindingsWhenTrue);
+        Env<AttrContext> trueEnv = bindingEnv(env, matchBindingsComputer.getMatchBindings(tree.cond, true));
         try {
             truetype = attribTree(tree.truepart, trueEnv, condInfo);
         } finally {
             trueEnv.info.scope.leave();
         }
 
-        MatchBindings trueBindings = matchBindings;
-
         Type falsetype;
-        Env<AttrContext> falseEnv = bindingEnv(env, condBindings.bindingsWhenFalse);
+        Env<AttrContext> falseEnv = bindingEnv(env, matchBindingsComputer.getMatchBindings(tree.cond, false));
         try {
             falsetype = attribTree(tree.falsepart, falseEnv, condInfo);
         } finally {
             falseEnv.info.scope.leave();
         }
-
-        MatchBindings falseBindings = matchBindings;
 
         Type owntype = (tree.polyKind == PolyKind.STANDALONE) ?
                 condType(List.of(tree.truepart.pos(), tree.falsepart.pos()),
@@ -1870,7 +1867,6 @@ public class Attr extends JCTree.Visitor {
             owntype = cfolder.coerce(condtype.isTrue() ? truetype : falsetype, owntype);
         }
         result = check(tree, owntype, KindSelector.VAL, resultInfo);
-        matchBindings = matchBindingsComputer.conditional(tree, condBindings, trueBindings, falseBindings);
     }
     //where
         private boolean isBooleanOrNumeric(Env<AttrContext> env, JCExpression tree) {
@@ -2026,8 +2022,8 @@ public class Attr extends JCTree.Visitor {
         // include x's bindings when true in y
         // include x's bindings when false in z
 
-        MatchBindings condBindings = matchBindings;
-        Env<AttrContext> thenEnv = bindingEnv(env, condBindings.bindingsWhenTrue);
+        List<BindingSymbol> thenBindings = matchBindingsComputer.getMatchBindings(tree.cond, true);
+        Env<AttrContext> thenEnv = bindingEnv(env, thenBindings);
 
         try {
             attribStat(tree.thenpart, thenEnv);
@@ -2038,9 +2034,10 @@ public class Attr extends JCTree.Visitor {
         preFlow(tree.thenpart);
         boolean aliveAfterThen = flow.aliveAfter(env, tree.thenpart, make);
         boolean aliveAfterElse;
+        List<BindingSymbol> elseBindings = matchBindingsComputer.getMatchBindings(tree.cond, false);
 
         if (tree.elsepart != null) {
-            Env<AttrContext> elseEnv = bindingEnv(env, condBindings.bindingsWhenFalse);
+            Env<AttrContext> elseEnv = bindingEnv(env, elseBindings);
             try {
                 attribStat(tree.elsepart, elseEnv);
             } finally {
@@ -2057,9 +2054,9 @@ public class Attr extends JCTree.Visitor {
         List<BindingSymbol> afterIfBindings = List.nil();
 
         if (aliveAfterThen && !aliveAfterElse) {
-            afterIfBindings = condBindings.bindingsWhenTrue;
+            afterIfBindings = thenBindings;
         } else if (aliveAfterElse && !aliveAfterThen) {
-            afterIfBindings = condBindings.bindingsWhenFalse;
+            afterIfBindings = elseBindings;
         }
 
         afterIfBindings.forEach(env.info.scope::enter);
@@ -3770,7 +3767,6 @@ public class Attr extends JCTree.Visitor {
             }
         }
         result = check(tree, owntype, KindSelector.VAL, resultInfo);
-        matchBindings = matchBindingsComputer.unary(tree, matchBindings);
     }
 
     public void visitBinary(JCBinary tree) {
@@ -3782,28 +3778,25 @@ public class Attr extends JCTree.Visitor {
         // x || y
         // include x's bindings when false in y
 
-        MatchBindings lhsBindings = matchBindings;
-        List<BindingSymbol> propagatedBindings;
+        List<BindingSymbol> matchBindings;
         switch (tree.getTag()) {
             case AND:
-                propagatedBindings = lhsBindings.bindingsWhenTrue;
+                matchBindings = matchBindingsComputer.getMatchBindings(tree.lhs, true);
                 break;
             case OR:
-                propagatedBindings = lhsBindings.bindingsWhenFalse;
+                matchBindings = matchBindingsComputer.getMatchBindings(tree.lhs, false);
                 break;
             default:
-                propagatedBindings = List.nil();
+                matchBindings = List.nil();
                 break;
         }
-        Env<AttrContext> rhsEnv = bindingEnv(env, propagatedBindings);
+        Env<AttrContext> rhsEnv = bindingEnv(env, matchBindings);
         Type right;
         try {
             right = chk.checkNonVoid(tree.rhs.pos(), attribExpr(tree.rhs, rhsEnv));
         } finally {
             rhsEnv.info.scope.leave();
         }
-
-        matchBindings = matchBindingsComputer.binary(tree, lhsBindings, matchBindings);
 
         // Find operator.
         Symbol operator = tree.operator = operators.resolveBinary(tree, tree.getTag(), left, right);
@@ -3925,7 +3918,6 @@ public class Attr extends JCTree.Visitor {
         annotate.queueScanTreeAndTypeAnnotate(tree.vartype, env, v, tree.pos());
         annotate.flush();
         result = tree.type;
-        matchBindings = new MatchBindings(List.of(tree.symbol), List.nil());
     }
 
     public void visitIndexed(JCArrayAccess tree) {

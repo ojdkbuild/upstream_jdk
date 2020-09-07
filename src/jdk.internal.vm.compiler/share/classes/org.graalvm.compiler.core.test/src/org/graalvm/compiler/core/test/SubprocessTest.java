@@ -48,17 +48,10 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             runnable.run();
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-            vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+            vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
             vmArgs.add("-D" + recursionPropName + "=true");
             configSubprocess(vmArgs);
-            boolean verbose = Boolean.getBoolean(getClass().getSimpleName() + ".verbose");
-            if (verbose) {
-                System.err.println(String.join(" ", vmArgs));
-            }
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
-            if (verbose) {
-                System.err.println(proc.output);
-            }
             assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
         }
     }

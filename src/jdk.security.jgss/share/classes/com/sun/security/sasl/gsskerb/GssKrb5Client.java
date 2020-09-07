@@ -228,10 +228,8 @@ final class GssKrb5Client extends GssKrb5Base implements SaslClient {
 
             // Received S1 (security layer, server max recv size)
 
-            MessageProp msgProp = new MessageProp(false);
             byte[] gssOutToken = secCtx.unwrap(challengeData, 0,
-                challengeData.length, msgProp);
-            checkMessageProp("Handshake failure: ", msgProp);
+                challengeData.length, new MessageProp(0, false));
 
             // First octet is a bit-mask specifying the protections
             // supported by the server

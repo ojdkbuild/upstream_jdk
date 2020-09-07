@@ -33,7 +33,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -55,19 +54,12 @@ import org.objectweb.asm.Type;
  */
 public class OptionsVerifierTest {
 
-    private static Set<String> WHITELIST = new TreeSet<>(Arrays.asList(//
-                    // Generated options delegating default values to PolyglotCompilerOptions
-                    "org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions"));
-
     @Test
     public void verifyOptions() throws IOException {
         HashSet<Class<?>> checked = new HashSet<>();
         for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor desc : opts) {
-                Class<?> descDeclaringClass = desc.getDeclaringClass();
-                if (!WHITELIST.contains(descDeclaringClass.getName())) {
-                    OptionsVerifier.checkClass(descDeclaringClass, desc, checked);
-                }
+                OptionsVerifier.checkClass(desc.getDeclaringClass(), desc, checked);
             }
         }
     }

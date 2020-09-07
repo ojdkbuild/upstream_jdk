@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -646,9 +647,9 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     @Override
-    protected OptimisticOptimizations getOptimisticOptimizations() {
+    protected HighTierContext getDefaultHighTierContext() {
         // Don't convert unreached paths into Guard
-        return OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.RemoveNeverExecutedCode);
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
     }
 
     private Object[] argsToBind;

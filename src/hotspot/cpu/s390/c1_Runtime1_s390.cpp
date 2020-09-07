@@ -339,7 +339,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         oop_maps->add_gc_map(call_offset, map);
         restore_live_registers_except_r2(sasm);
 
-        __ verify_oop(obj, FILE_AND_LINE);
+        __ verify_oop(obj);
         __ z_br(Z_R14);
       }
       break;
@@ -405,7 +405,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         oop_maps->add_gc_map(call_offset, map);
         restore_live_registers_except_r2(sasm);
 
-        __ verify_oop(obj, FILE_AND_LINE);
+        __ verify_oop(obj);
         __ z_br(Z_R14);
       }
       break;
@@ -423,7 +423,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         restore_live_registers_except_r2(sasm);
 
         // Z_R2,: new multi array
-        __ verify_oop(Z_R2, FILE_AND_LINE);
+        __ verify_oop(Z_R2);
         __ z_br(Z_R14);
       }
       break;

@@ -409,7 +409,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    protected static AVXSize getRegisterSize(Value a) {
+    private static AVXSize getRegisterSize(Value a) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         if (kind.isXMM()) {
             return AVXKind.getRegisterSize(kind);
@@ -479,19 +479,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (JavaConstant.isNull(a.getConstant())) {
             append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
             return true;
-        } else if (a.getConstant() instanceof VMConstant && size == DWORD && target().inlineObjects) {
+        } else if (a.getConstant() instanceof VMConstant && size == DWORD) {
             VMConstant vc = (VMConstant) a.getConstant();
             append(new AMD64BinaryConsumer.MemoryVMConstOp(CMP.getMIOpcode(size, false), b, vc, state));
             return true;
         } else {
-            if (a.getConstant() instanceof JavaConstant && a.getJavaConstant().getJavaKind() != JavaKind.Object) {
-                long value = a.getJavaConstant().asLong();
-                if (NumUtil.is32bit(value)) {
-                    append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
-                    return true;
-                }
+            long value = a.getJavaConstant().asLong();
+            if (NumUtil.is32bit(value)) {
+                append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
+                return true;
+            } else {
+                return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
             }
-            return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
         }
     }
 

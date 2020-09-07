@@ -84,7 +84,6 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
-import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -156,22 +155,20 @@ import sun.misc.Unsafe;
 public class StandardGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements,
-                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks, boolean arrayEqualsSubstitution) {
+                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
-        registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
+        registerStringPlugins(plugins, replacements, snippetReflection);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
-        if (arrayEqualsSubstitution) {
-            registerArraysPlugins(plugins, replacements);
-        }
+        registerArraysPlugins(plugins, replacements);
         registerArrayPlugins(plugins, replacements);
         registerUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks);
         registerEdgesPlugins(metaAccess, plugins);
@@ -199,7 +196,7 @@ public class StandardGraphBuilderPlugins {
         STRING_CODER_FIELD = coder;
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean arrayEqualsSubstitution) {
+    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection) {
         final Registration r = new Registration(plugins, String.class, replacements);
         r.register1("hashCode", Receiver.class, new InvocationPlugin() {
             @Override
@@ -230,9 +227,7 @@ public class StandardGraphBuilderPlugins {
         });
 
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            if (arrayEqualsSubstitution) {
-                r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
-            }
+            r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
 
             r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
 
@@ -247,9 +242,7 @@ public class StandardGraphBuilderPlugins {
                 }
             });
         } else {
-            if (arrayEqualsSubstitution) {
-                r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
-            }
+            r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
             Registration utf16sub = new Registration(plugins, StringUTF16Substitutions.class, replacements);
             utf16sub.register2("getCharDirect", byte[].class, int.class, new InvocationPlugin() {
                 @Override
@@ -1252,20 +1245,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("sideEffect", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new SideEffectNode());
-                return true;
-            }
-        });
-        r.register1("sideEffect", int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
-                b.addPush(JavaKind.Int, new SideEffectNode(a));
-                return true;
-            }
-        });
+
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {

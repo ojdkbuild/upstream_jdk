@@ -53,8 +53,8 @@ import jdk.vm.ci.code.RegisterValue;
  */
 abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
 
-    protected final GraalHotSpotVMConfig config;
-    protected final Register thread;
+    private final GraalHotSpotVMConfig config;
+    private final Register thread;
 
     protected AArch64HotSpotEpilogueOp(LIRInstructionClass<? extends AArch64HotSpotEpilogueOp> c, GraalHotSpotVMConfig config, Register thread) {
         super(c);

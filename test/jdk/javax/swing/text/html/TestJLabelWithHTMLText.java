@@ -23,7 +23,7 @@
 
 /**
  * @test
- * @bug 8230235 8235744
+ * @bug 8230235
  * @summary Tests if JLabel with HTML text having empty img tag and
  *      documentBaseKey set renders properly without NPE
  * @run main TestJLabelWithHTMLText
@@ -41,7 +41,7 @@ public class TestJLabelWithHTMLText {
             JLabel label = new JLabel();
             try {
                 label.putClientProperty(BasicHTML.documentBaseKey,
-                        new URL("http://localhost"));
+                        new URL("https://www.google.com"));
             } catch (MalformedURLException e) {
                 e.printStackTrace();
             }

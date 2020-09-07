@@ -324,7 +324,6 @@ int getAllInterfacesAndAddresses (JNIEnv *env, netif **netifPP)
                 goto err;
             }
             loopif->naddrs += c;
-            loopif->ipv6Index = ptr->Ipv6IfIndex;
         } else {
             int index = ptr->IfIndex;
             if (index != 0) {

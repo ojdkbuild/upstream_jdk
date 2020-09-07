@@ -287,17 +287,6 @@ final class CertificateVerify {
                 ByteBuffer message) throws IOException {
             // The consuming happens in server side only.
             ServerHandshakeContext shc = (ServerHandshakeContext)context;
-
-            // Clean up this consumer
-            shc.handshakeConsumers.remove(SSLHandshake.CERTIFICATE_VERIFY.id);
-
-            // Ensure that the CV message follows the CKE
-            if (shc.handshakeConsumers.containsKey(
-                    SSLHandshake.CLIENT_KEY_EXCHANGE.id)) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
-                        "Unexpected CertificateVerify handshake message");
-            }
-
             S30CertificateVerifyMessage cvm =
                     new S30CertificateVerifyMessage(shc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -540,17 +529,6 @@ final class CertificateVerify {
                 ByteBuffer message) throws IOException {
             // The consuming happens in server side only.
             ServerHandshakeContext shc = (ServerHandshakeContext)context;
-
-            // Clean up this consumer
-            shc.handshakeConsumers.remove(SSLHandshake.CERTIFICATE_VERIFY.id);
-
-            // Ensure that the CV message follows the CKE
-            if (shc.handshakeConsumers.containsKey(
-                    SSLHandshake.CLIENT_KEY_EXCHANGE.id)) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
-                        "Unexpected CertificateVerify handshake message");
-            }
-
             T10CertificateVerifyMessage cvm =
                     new T10CertificateVerifyMessage(shc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -789,17 +767,6 @@ final class CertificateVerify {
                 ByteBuffer message) throws IOException {
             // The consuming happens in server side only.
             ServerHandshakeContext shc = (ServerHandshakeContext)context;
-
-            // Clean up this consumer
-            shc.handshakeConsumers.remove(SSLHandshake.CERTIFICATE_VERIFY.id);
-
-            // Ensure that the CV message follows the CKE
-            if (shc.handshakeConsumers.containsKey(
-                    SSLHandshake.CLIENT_KEY_EXCHANGE.id)) {
-                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
-                        "Unexpected CertificateVerify handshake message");
-            }
-
             T12CertificateVerifyMessage cvm =
                     new T12CertificateVerifyMessage(shc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -1153,10 +1120,6 @@ final class CertificateVerify {
                 ByteBuffer message) throws IOException {
             // The producing happens in handshake context only.
             HandshakeContext hc = (HandshakeContext)context;
-
-            // Clean up this consumer
-            hc.handshakeConsumers.remove(SSLHandshake.CERTIFICATE_VERIFY.id);
-
             T13CertificateVerifyMessage cvm =
                     new T13CertificateVerifyMessage(hc, message);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {

@@ -628,13 +628,6 @@ public abstract class SPARCAssembler extends Assembler {
             return value;
         }
 
-        public int getOpfCCValue() {
-            /*
-             * In the opf_cc encoding for FMOVcc, the third bit is set to indicate icc/xcc.
-             */
-            return (isFloat ? value : (value | 0x4));
-        }
-
         public String getOperator() {
             return operator;
         }
@@ -1620,7 +1613,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.rd.setBits(inst, rd.encoding());
             inst = BitSpec.op3.setBits(inst, opfLow.op3.value);
             inst = BitSpec.opfCond.setBits(inst, condition.value);
-            inst = BitSpec.opfCC.setBits(inst, cc.getOpfCCValue());
+            inst = BitSpec.opfCC.setBits(inst, cc.value);
             inst = BitSpec.opfLow.setBits(inst, opfLow.value);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding());
             masm.emitInt(inst);
@@ -2200,7 +2193,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     private void fmovcc(ConditionFlag cond, CC cc, Register rs2, Register rd, int opfLow) {
-        int opfCC = cc.getOpfCCValue();
+        int opfCC = cc.value;
         int a = opfCC << 11 | opfLow << 5 | rs2.encoding;
         fmt10(rd.encoding, Fpop2.value, cond.value, a);
     }

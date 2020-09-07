@@ -123,3 +123,11 @@ ShenandoahEvacOOMScope::ShenandoahEvacOOMScope() {
 ShenandoahEvacOOMScope::~ShenandoahEvacOOMScope() {
   ShenandoahHeap::heap()->leave_evacuation();
 }
+
+ShenandoahEvacOOMScopeLeaver::ShenandoahEvacOOMScopeLeaver() {
+  ShenandoahHeap::heap()->leave_evacuation();
+}
+
+ShenandoahEvacOOMScopeLeaver::~ShenandoahEvacOOMScopeLeaver() {
+  ShenandoahHeap::heap()->enter_evacuation();
+}

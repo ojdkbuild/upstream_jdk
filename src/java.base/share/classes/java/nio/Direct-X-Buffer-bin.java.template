@@ -33,7 +33,6 @@ class XXX {
 
     private $type$ get$Type$(long a) {
         try {
-            checkSegment();
             $memtype$ x = UNSAFE.get$Memtype$Unaligned(null, a, bigEndian);
             return $fromBits$(x);
         } finally {
@@ -62,7 +61,6 @@ class XXX {
     private ByteBuffer put$Type$(long a, $type$ x) {
 #if[rw]
         try {
-            checkSegment();
             $memtype$ y = $toBits$(x);
             UNSAFE.put$Memtype$Unaligned(null, a, y, bigEndian);
         } finally {
@@ -106,13 +104,13 @@ class XXX {
                                                                        0,
                                                                        size,
                                                                        size,
-                                                                       address + off, segment))
+                                                                       address + off))
                     : ($Type$Buffer)(new ByteBufferAs$Type$Buffer$RW$L(this,
                                                                        -1,
                                                                        0,
                                                                        size,
                                                                        size,
-                                                                       address + off, segment)));
+                                                                       address + off)));
         } else {
             return (nativeByteOrder
                     ? ($Type$Buffer)(new Direct$Type$Buffer$RW$U(this,
@@ -120,13 +118,13 @@ class XXX {
                                                                  0,
                                                                  size,
                                                                  size,
-                                                                 off, segment))
+                                                                 off))
                     : ($Type$Buffer)(new Direct$Type$Buffer$RW$S(this,
                                                                  -1,
                                                                  0,
                                                                  size,
                                                                  size,
-                                                                 off, segment)));
+                                                                 off)));
         }
     }
 

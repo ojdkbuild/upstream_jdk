@@ -154,7 +154,6 @@ public class GenerateJfrFiles {
         boolean startTime;
         boolean periodic;
         boolean cutoff;
-        String commitState;
     }
 
     static class FieldElement {
@@ -220,15 +219,14 @@ public class GenerateJfrFiles {
                 currentType.name = attributes.getValue("name");
                 break;
             case "Event":
-                EventElement eventType = new EventElement();
-                eventType.name = attributes.getValue("name");
-                eventType.thread = getBoolean(attributes, "thread", false);
-                eventType.stackTrace = getBoolean(attributes, "stackTrace", false);
-                eventType.startTime = getBoolean(attributes, "startTime", true);
-                eventType.periodic = attributes.getValue("period") != null;
-                eventType.cutoff = getBoolean(attributes, "cutoff", false);
-                eventType.commitState = attributes.getValue("commitState");
-                currentType = eventType;
+                EventElement eventtType = new EventElement();
+                eventtType.name = attributes.getValue("name");
+                eventtType.thread = getBoolean(attributes, "thread", false);
+                eventtType.stackTrace = getBoolean(attributes, "stackTrace", false);
+                eventtType.startTime = getBoolean(attributes, "startTime", true);
+                eventtType.periodic = attributes.getValue("period") != null;
+                eventtType.cutoff = getBoolean(attributes, "cutoff", false);
+                currentType = eventtType;
                 break;
             case "Field":
                 currentField = new FieldElement(metadata);
@@ -461,7 +459,6 @@ public class GenerateJfrFiles {
             out.write("#include \"utilities/ticks.hpp\"");
             out.write("#if INCLUDE_JFR");
             out.write("#include \"jfr/recorder/service/jfrEvent.hpp\"");
-            out.write("#include \"jfr/support/jfrEpochSynchronization.hpp\"");
             out.write("/*");
             out.write(" * Each event class has an assert member function verify() which is invoked");
             out.write(" * just before the engine writes the event and its fields to the data stream.");
@@ -526,7 +523,7 @@ public class GenerateJfrFiles {
         }
         out.write("");
         if (!empty) {
-          printWriteData(out, t.fields, null);
+          printWriteData(out, t.fields);
         }
         out.write("};");
         out.write("");
@@ -569,7 +566,7 @@ public class GenerateJfrFiles {
         }
         out.write("");
         if (!empty) {
-          printWriteData(out, event.fields, event.commitState);
+          printWriteData(out, event.fields);
           out.write("");
         }
         out.write("  using JfrEvent<Event" + event.name + ">::commit; // else commit() is hidden by overloaded versions in this class");
@@ -581,13 +578,9 @@ public class GenerateJfrFiles {
         out.write("};");
     }
 
-    private static void printWriteData(Printer out, List<FieldElement> fields, String commitState) {
+    private static void printWriteData(Printer out, List<FieldElement> fields) {
         out.write("  template <typename Writer>");
         out.write("  void writeData(Writer& w) {");
-        if (("_thread_in_native").equals(commitState)) {
-            out.write("    // explicit epoch synchronization check");
-            out.write("    JfrEpochSynchronization sync;");
-        }
         for (FieldElement field : fields) {
             if (field.struct) {
                 out.write("    _" + field.name + ".writeData(w);");

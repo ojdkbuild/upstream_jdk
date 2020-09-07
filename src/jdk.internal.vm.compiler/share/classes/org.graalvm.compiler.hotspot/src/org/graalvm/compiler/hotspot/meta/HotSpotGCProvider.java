@@ -35,13 +35,11 @@ import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.spi.GCProvider;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 public class HotSpotGCProvider implements GCProvider {
     private final BarrierSet barrierSet;
 
-    public HotSpotGCProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        this.barrierSet = createBarrierSet(config, metaAccess);
+    public HotSpotGCProvider(GraalHotSpotVMConfig config) {
+        this.barrierSet = createBarrierSet(config);
     }
 
     @Override
@@ -49,10 +47,10 @@ public class HotSpotGCProvider implements GCProvider {
         return barrierSet;
     }
 
-    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         if (config.useG1GC) {
-            return new G1BarrierSet(metaAccess) {
+            return new G1BarrierSet() {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode initializingWrite, ValueNode writtenValue) {
                     if (!super.writeRequiresPostBarrier(initializingWrite, writtenValue)) {

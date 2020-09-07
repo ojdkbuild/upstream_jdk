@@ -40,7 +40,6 @@ tier1_part2 = \
 tier1_part3 = \
     :jdk_math \
     :jdk_svc_sanity \
-    :jdk_foreign \
     java/nio/Buffer \
     com/sun/crypto/provider/Cipher \
     sun/nio/cs/ISO8859x.java
@@ -333,9 +332,6 @@ jdk_svc = \
     :jdk_jfr \
     :svc_tools
 
-jdk_foreign = \
-    java/foreign
-
 #############################
 
 #
@@ -356,6 +352,7 @@ jdk_beans = \
     java/beans
 
 jdk_swing = \
+    javax/accessibility \
     javax/swing \
     com/sun/java/swing
 
@@ -364,10 +361,6 @@ jdk_sound = \
 
 jdk_imageio = \
     javax/imageio
-
-jdk_accessibility = \
-    javax/accessibility \
-    com/sun/java/accessibility
 
 jfc_demo = \
      demo/jfc
@@ -379,7 +372,6 @@ jdk_desktop = \
     :jdk_swing \
     :jdk_sound \
     :jdk_imageio \
-    :jdk_accessibility \
     :jfc_demo \
     :jdk_client_sanity
 
