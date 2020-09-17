@@ -78,3 +78,11 @@ $(eval $(call SetupCopyLegalFiles, COPY_LEGAL, \
 TARGETS += $(COPY_LEGAL)
 
 ################################################################################
+#
+# ojdkbuild freetype
+
+$(LIB_DST_DIR)/freetype.dll: $(FREETYPE_SHARED_LIB_PATH)
+	$(call install-file)
+TARGETS += $(LIB_DST_DIR)/freetype.dll
+
+################################################################################

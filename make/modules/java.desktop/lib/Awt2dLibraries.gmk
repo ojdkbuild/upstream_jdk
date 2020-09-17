@@ -324,7 +324,7 @@ $(BUILD_LIBLCMS): $(BUILD_LIBAWT)
 # work because we have to declare all variables as volatile in result.
 
 ifeq ($(USE_EXTERNAL_LIBJPEG), true)
-  LIBJPEG_LIBS := -ljpeg
+  #LIBJPEG_LIBS := -ljpeg
   BUILD_LIBJAVAJPEG_INCLUDE_FILES := \
       imageioJPEG.c \
       jpegdecoder.c
@@ -340,7 +340,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJAVAJPEG, \
     NAME := javajpeg, \
     INCLUDE_FILES := $(BUILD_LIBJAVAJPEG_INCLUDE_FILES), \
     OPTIMIZATION := HIGHEST, \
-    CFLAGS := $(CFLAGS_JDKLIB), \
+    CFLAGS := $(LIBJPEG_CFLAGS) $(CFLAGS_JDKLIB), \
     HEADERS_FROM_SRC := $(LIBJPEG_HEADERS_FROM_SRC), \
     DISABLED_WARNINGS_gcc := clobbered implicit-fallthrough shift-negative-value, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
@@ -654,7 +654,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
     LIBSPLASHSCREEN_HEADER_DIRS += libsplashscreen/giflib
   else
     LIBSPLASHSCREEN_EXCLUDES := giflib
-    GIFLIB_LIBS := -lgif
+    #GIFLIB_LIBS := -lgif
   endif
 
   ifeq ($(USE_EXTERNAL_LIBJPEG), false)
@@ -663,7 +663,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
     # LIBSPLASHSCREEN_EXTRA_SRC += libjavajpeg
     LIBSPLASHSCREEN_EXTRA_SRC += $(TOPDIR)/src/java.desktop/share/native/libjavajpeg
   else
-    LIBJPEG_LIBS := -ljpeg
+    #LIBJPEG_LIBS := -ljpeg
   endif
 
   ifeq ($(USE_EXTERNAL_LIBPNG), false)
