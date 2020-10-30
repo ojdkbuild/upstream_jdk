@@ -24,9 +24,9 @@
 /*
  * @test
  * @summary Unit test for LingeredApp
- * @library /test/lib
- * @build jdk.test.lib.apps.LingeredAppTest jdk.test.lib.apps.LingeredApp
- * @run main jdk.test.lib.apps.LingeredAppTest
+ * @compile LingeredAppTest.java
+ * @compile LingeredApp.java
+ * @run main LingeredAppTest
  */
 
 package jdk.test.lib.apps;
@@ -52,13 +52,13 @@ public class LingeredAppTest {
 
             cmd.add("-XX:+PrintFlagsFinal");
 
-            LingeredApp a = LingeredApp.startApp(cmd.toArray(new String[cmd.size()]));
+            LingeredApp a = LingeredApp.startApp(cmd.toArray(new String[cmd.length]);
             System.out.printf("App pid: %d\n", a.getPid());
             a.stopApp();
 
             System.out.println("App output:");
             int count = 0;
-            for (String line : a.getOutput().getStdoutAsList()) {
+            for (String line : a.getAppOutput()) {
                 count += 1;
             }
             System.out.println("Found " + count + " lines in VM output");

@@ -35,6 +35,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  *
  * @comment build test class and indify classes
  * @build vm.mlvm.anonloader.func.castToGrandparent.Test

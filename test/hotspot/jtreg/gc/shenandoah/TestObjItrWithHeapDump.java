@@ -26,7 +26,7 @@
  * @test TestObjIterWithHeapDump
  * @summary Test heap dump triggered heap object iteration
  * @bug 8225014
- * @requires vm.gc.Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  * @run driver TestObjItrWithHeapDump
  */

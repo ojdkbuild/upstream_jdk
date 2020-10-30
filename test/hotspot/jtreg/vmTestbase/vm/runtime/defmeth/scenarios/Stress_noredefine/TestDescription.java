@@ -31,6 +31,7 @@
  * VM Testbase keywords: [defmeth, jdk8, quick]
  *
  * @library /vmTestbase /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions vm.runtime.defmeth.StressTest
  */
 

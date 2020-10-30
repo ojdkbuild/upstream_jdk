@@ -54,27 +54,6 @@ import java.util.stream.Stream;
  * element layout (see {@link SequenceLayout}); a <em>group layout</em> denotes an aggregation of (typically) heterogeneous
  * member layouts (see {@link GroupLayout}).
  * <p>
- * For instance, consider the following struct declaration in C:
- *
- * <blockquote><pre>{@code
- typedef struct {
-     char kind;
-     int value;
- } TaggedValues[5];
- * }</pre></blockquote>
- *
- * The above declaration can be modelled using a layout object, as follows:
- *
- * <blockquote><pre>{@code
-SequenceLayout taggedValues = MemoryLayout.ofSequence(5,
-    MemoryLayout.ofStruct(
-        MemoryLayout.ofValueBits(8, ByteOrder.NATIVE_ORDER).withName("kind"),
-        MemoryLayout.ofPaddingBits(24),
-        MemoryLayout.ofValueBits(32, ByteOrder.NATIVE_ORDER).withName("value")
-    )
-).withName("TaggedValues");
- * }</pre></blockquote>
- * <p>
  * All implementations of this interface must be <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>;
  * use of identity-sensitive operations (including reference equality ({@code ==}), identity hash code, or synchronization) on
  * instances of {@code MemoryLayout} may have unpredictable results and should be avoided. The {@code equals} method should
@@ -124,30 +103,53 @@ SequenceLayout taggedValues = MemoryLayout.ofSequence(5,
  * another layout (see {@link MemoryLayout#map(UnaryOperator, PathElement...)}).
  * <p>
  * Such <em>layout paths</em> can be constructed programmatically using the methods in this class.
- * For instance, given the {@code taggedValues} layout instance constructed as above, we can obtain the offset,
- * in bits, of the member layout named <code>value</code> in the <em>first</em> sequence element, as follows:
+ * For instance, given a layout constructed as follows:
  * <blockquote><pre>{@code
-long valueOffset = taggedValues.bitOffset(PathElement.sequenceElement(0),
-                                          PathElement.groupElement("value")); // yields 32
+SequenceLayout seq = MemoryLayout.ofSequence(5,
+    MemoryLayout.ofStruct(
+        MemoryLayout.ofPaddingBits(32),
+        MemoryLayout.ofValueBits(32, ByteOrder.BIG_ENDIAN).withName("value")
+));
+ * }</pre></blockquote>
+ *
+ * We can obtain the offset, in bits, of the member layout named <code>value</code> from <code>seq</code>, as follows:
+ * <blockquote><pre>{@code
+long valueOffset = seq.bitOffset(PathElement.sequenceElement(), PathElement.groupElement("value"));
  * }</pre></blockquote>
  *
  * Similarly, we can select the member layout named {@code value}, as follows:
  * <blockquote><pre>{@code
-MemoryLayout value = taggedValues.select(PathElement.sequenceElement(),
-                                         PathElement.groupElement("value"));
+MemoryLayout value = seq.select(PathElement.sequenceElement(), PathElement.groupElement("value"));
  * }</pre></blockquote>
  *
  * And, we can also replace the layout named {@code value} with another layout, as follows:
  * <blockquote><pre>{@code
-MemoryLayout taggedValuesWithHole = taggedValues.map(l -> MemoryLayout.ofPadding(32),
-                                            PathElement.sequenceElement(), PathElement.groupElement("value"));
+MemoryLayout newSeq = seq.map(l -> MemoryLayout.ofPadding(32), PathElement.sequenceElement(), PathElement.groupElement("value"));
  * }</pre></blockquote>
  *
  * That is, the above declaration is identical to the following, more verbose one:
  * <blockquote><pre>{@code
-MemoryLayout taggedValuesWithHole = MemoryLayout.ofSequence(5,
+MemoryLayout newSeq = MemoryLayout.ofSequence(5,
     MemoryLayout.ofStruct(
-        MemoryLayout.ofValueBits(8, ByteOrder.NATIVE_ORDER).withName("kind").
+        MemoryLayout.ofPaddingBits(32),
+        MemoryLayout.ofPaddingBits(32)
+));
+ * }</pre></blockquote>
+ *
+ * Similarly, we can select the member layout named {@code value}, as follows:
+ * <blockquote><pre>{@code
+MemoryLayout value = seq.select(PathElement.sequenceElement(), PathElement.groupElement("value"));
+ * }</pre></blockquote>
+ *
+ * And, we can also replace the layout named {@code value} with another layout, as follows:
+ * <blockquote><pre>{@code
+MemoryLayout newSeq = seq.map(l -> MemoryLayout.ofPadding(32), PathElement.sequenceElement(), PathElement.groupElement("value"));
+ * }</pre></blockquote>
+ *
+ * That is, the above declaration is identical to the following, more verbose one:
+ * <blockquote><pre>{@code
+MemoryLayout newSeq = MemoryLayout.ofSequence(5,
+    MemoryLayout.ofStruct(
         MemoryLayout.ofPaddingBits(32),
         MemoryLayout.ofPaddingBits(32)
 ));
@@ -159,14 +161,11 @@ MemoryLayout taggedValuesWithHole = MemoryLayout.ofSequence(5,
  * This is important when obtaining memory access var handle from layouts, as in the following code:
  *
  * <blockquote><pre>{@code
-VarHandle valueHandle = taggedValues.varHandle(int.class,
-                                               PathElement.sequenceElement(),
-                                               PathElement.groupElement("value"));
+VarHandle valueHandle = seq.map(int.class, PathElement.sequenceElement(), PathElement.groupElement("value"));
  * }</pre></blockquote>
  *
- * Since the layout path constructed in the above example features exactly one free dimension (as it doesn't specify
- * <em>which</em> member layout named {@code value} should be selected from the enclosing sequence layout),
- * it follows that the memory access var handle {@code valueHandle} will feature an <em>additional</em> {@code long}
+ * Since the layout path {@code seq} constructed in the above example features exactly one free dimension,
+ * it follows that the memory access var handle {@code valueHandle} will feature an extra {@code long}
  * access coordinate.
  *
  * <h2>Layout attributes</h2>
@@ -181,7 +180,7 @@ VarHandle valueHandle = taggedValues.varHandle(int.class,
  * explicitly permitted types.
  *
  * @implSpec
- * Implementations of this interface are immutable, thread-safe and <a href="{@docRoot}/java.base/java/lang/doc-files/ValueBased.html">value-based</a>.
+ * Implementations of this class are immutable and thread-safe.
  */
 public interface MemoryLayout extends Constable {
 

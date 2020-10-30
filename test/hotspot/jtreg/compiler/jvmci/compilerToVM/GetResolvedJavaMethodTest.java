@@ -27,7 +27,7 @@
  * @requires vm.jvmci
  * @library / /test/lib
  * @library ../common/patches
- * @ignore 8249621
+ * @ignore Not supported JVMCI API
  * @modules java.base/jdk.internal.misc:+open
  * @modules jdk.internal.vm.ci/jdk.vm.ci.hotspot:+open
  *

@@ -1429,9 +1429,6 @@ public class ClassReader {
                         }
                     }
                 }
-            } else if (proxy.type.tsym.flatName() == syms.previewFeatureInternalType.tsym.flatName()) {
-                sym.flags_field |= PREVIEW_API;
-                setFlagIfAttributeTrue(proxy, sym, names.essentialAPI, PREVIEW_ESSENTIAL_API);
             } else {
                 if (proxy.type.tsym == syms.annotationTargetType.tsym) {
                     target = proxy;

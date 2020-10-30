@@ -163,24 +163,19 @@ public class ArraysSupport {
     /**
      * Mismatch over long lengths.
      */
-    public static long vectorizedMismatchLargeForBytes(Object a, long aOffset,
-                                                       Object b, long bOffset,
-                                                       long length) {
+    public static long vectorizedMismatchLarge(Object a, long aOffset,
+                                               Object b, long bOffset,
+                                               long length,
+                                               int log2ArrayIndexScale) {
         long off = 0;
         long remaining = length;
-        int i, size;
-        boolean lastSubRange = false;
-        while (remaining > 7 && !lastSubRange) {
-            if (remaining > Integer.MAX_VALUE) {
-                size = Integer.MAX_VALUE;
-            } else {
-                size = (int) remaining;
-                lastSubRange = true;
-            }
+        int i ;
+        while (remaining > 7) {
+            int size = (int) Math.min(Integer.MAX_VALUE, remaining);
             i = vectorizedMismatch(
                     a, aOffset + off,
                     b, bOffset + off,
-                    size, LOG2_ARRAY_BYTE_INDEX_SCALE);
+                    size, log2ArrayIndexScale);
             if (i >= 0)
                 return off + i;
 
@@ -188,7 +183,7 @@ public class ArraysSupport {
             off += i;
             remaining -= i;
         }
-        return ~remaining;
+        return ~off;
     }
 
     // Booleans

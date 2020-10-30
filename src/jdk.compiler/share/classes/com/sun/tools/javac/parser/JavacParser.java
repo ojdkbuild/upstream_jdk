@@ -3761,7 +3761,15 @@ public class JavacParser implements Parser {
             nextToken();
             implementing = typeList();
         }
-        List<JCExpression> permitting = permitsClause(mods, "class");
+        List<JCExpression> permitting = List.nil();
+        if (allowSealedTypes && token.kind == IDENTIFIER && token.name() == names.permits) {
+            checkSourceLevel(Feature.SEALED_CLASSES);
+            if ((mods.flags & Flags.SEALED) == 0) {
+                log.error(token.pos, Errors.InvalidPermitsClause(Fragments.ClassIsNotSealed("class")));
+            }
+            nextToken();
+            permitting = qualidentList(false);
+        }
         List<JCTree> defs = classInterfaceOrRecordBody(name, false, false);
         JCClassDecl result = toP(F.at(pos).ClassDef(
             mods, name, typarams, extending, implementing, permitting, defs));
@@ -3841,25 +3849,21 @@ public class JavacParser implements Parser {
             nextToken();
             extending = typeList();
         }
-        List<JCExpression> permitting = permitsClause(mods, "interface");
+        List<JCExpression> permitting = List.nil();
+        if (allowSealedTypes && token.kind == IDENTIFIER && token.name() == names.permits) {
+            checkSourceLevel(Feature.SEALED_CLASSES);
+            if ((mods.flags & Flags.SEALED) == 0) {
+                log.error(token.pos, Errors.InvalidPermitsClause(Fragments.ClassIsNotSealed("interface")));
+            }
+            nextToken();
+            permitting = typeList();
+        }
         List<JCTree> defs;
         defs = classInterfaceOrRecordBody(name, true, false);
         JCClassDecl result = toP(F.at(pos).ClassDef(
             mods, name, typarams, null, extending, permitting, defs));
         attach(result, dc);
         return result;
-    }
-
-    List<JCExpression> permitsClause(JCModifiers mods, String classOrInterface) {
-        if (allowSealedTypes && token.kind == IDENTIFIER && token.name() == names.permits) {
-            checkSourceLevel(Feature.SEALED_CLASSES);
-            if ((mods.flags & Flags.SEALED) == 0) {
-                log.error(token.pos, Errors.InvalidPermitsClause(Fragments.ClassIsNotSealed(classOrInterface)));
-            }
-            nextToken();
-            return qualidentList(false);
-        }
-        return List.nil();
     }
 
     /** EnumDeclaration = ENUM Ident [IMPLEMENTS TypeList] EnumBody

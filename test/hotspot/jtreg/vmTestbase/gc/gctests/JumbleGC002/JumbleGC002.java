@@ -50,6 +50,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:-UseGCOverheadLimit gc.gctests.JumbleGC002.JumbleGC002
  */
 

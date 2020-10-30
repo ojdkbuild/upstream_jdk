@@ -47,6 +47,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm -XX:-UseGCOverheadLimit gc.huge.quicklook.largeheap.Access.access
  */
 

@@ -23,7 +23,7 @@
 
 /**
  * @test TestGarbageCollectorMXBean
- * @requires vm.gc.Z
+ * @requires vm.gc.Z & !vm.graal.enabled
  * @summary Test ZGC garbage collector MXBean
  * @modules java.management
  * @run main/othervm -XX:+UseZGC -Xms256M -Xmx512M -Xlog:gc TestGarbageCollectorMXBean 256 512

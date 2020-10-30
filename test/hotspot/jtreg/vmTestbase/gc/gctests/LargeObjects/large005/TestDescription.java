@@ -60,6 +60,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  *
  * @comment generate and compile nsk.share.gc.newclass.* classes
  * @run driver nsk.share.gc.GenClassesBuilder

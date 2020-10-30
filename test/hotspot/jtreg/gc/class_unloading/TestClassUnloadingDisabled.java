@@ -77,7 +77,8 @@ package gc.class_unloading;
 /*
  * @test TestClassUnloadingDisabledShenandoah
  * @bug 8114823
- * @requires vm.gc.Shenandoah
+ * @comment Graal does not support Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @requires vm.opt.ExplicitGCInvokesConcurrent != true
  * @requires vm.opt.ClassUnloading != true
  * @library /test/lib

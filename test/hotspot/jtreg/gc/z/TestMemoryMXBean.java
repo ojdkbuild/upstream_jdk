@@ -23,7 +23,7 @@
 
 /**
  * @test TestMemoryMXBean
- * @requires vm.gc.Z
+ * @requires vm.gc.Z & !vm.graal.enabled
  * @summary Test ZGC heap memory MXBean
  * @modules java.management
  * @run main/othervm -XX:+UseZGC -Xms128M -Xmx256M -Xlog:gc* TestMemoryMXBean 128 256

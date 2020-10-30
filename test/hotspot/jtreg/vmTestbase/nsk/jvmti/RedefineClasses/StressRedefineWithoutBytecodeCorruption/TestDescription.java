@@ -31,6 +31,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native
  *      -Xlog:redefine+class+iklass+purge=trace,redefine+class+iklass+add=trace
  *      -agentlib:stressRedefine

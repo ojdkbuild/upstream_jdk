@@ -31,14 +31,16 @@ import java.io.PrintWriter;
 import java.text.BreakIterator;
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
+import java.util.MissingResourceException;
 import java.util.Objects;
+import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.tools.JavaFileManager;
@@ -60,7 +62,6 @@ import jdk.javadoc.doclet.Doclet;
 import jdk.javadoc.doclet.Doclet.Option;
 import jdk.javadoc.doclet.DocletEnvironment;
 import jdk.javadoc.doclet.StandardDoclet;
-import jdk.javadoc.internal.Versions;
 import jdk.javadoc.internal.tool.Main.Result;
 import jdk.javadoc.internal.tool.ToolOptions.ToolOption;
 
@@ -166,28 +167,15 @@ public class Start {
 
             @Override
             public void version() {
-                showVersion("javadoc.version", orDefault(() -> Versions.shortVersionStringOf(toolVersion())));
+                showVersion("javadoc.version", "release");
             }
 
             @Override
             public void fullVersion() {
-                showVersion("javadoc.fullversion", orDefault(() -> Versions.fullVersionStringOf(toolVersion())));
-            }
-
-            private String orDefault(Supplier<String> s) {
-                try {
-                    return s.get();
-                } catch (RuntimeException e) {
-                    assert false : e;
-                    return Log.getLocalizedString("version.not.available");
-                }
+                showVersion("javadoc.fullversion", "full");
             }
         };
         return new ToolOptions(context, messager, helper);
-    }
-
-    private Runtime.Version toolVersion() {
-        return Versions.javadocVersion();
     }
 
     private void showUsage() {
@@ -208,8 +196,26 @@ public class Start {
             messager.notice(footerKey);
     }
 
-    private void showVersion(String labelKey, String value) {
-        messager.notice(labelKey, messager.programName, value);
+    private static final String versionRBName = "jdk.javadoc.internal.tool.resources.version";
+    private static ResourceBundle versionRB;
+
+    private void showVersion(String labelKey, String versionKey) {
+        messager.notice(labelKey, messager.programName, getVersion(versionKey));
+    }
+
+    private static String getVersion(String key) {
+        if (versionRB == null) {
+            try {
+                versionRB = ResourceBundle.getBundle(versionRBName);
+            } catch (MissingResourceException e) {
+                return Log.getLocalizedString("version.not.available");
+            }
+        }
+        try {
+            return versionRB.getString(key);
+        } catch (MissingResourceException e) {
+            return Log.getLocalizedString("version.not.available");
+        }
     }
 
     private void showToolOptions(ToolOption.Kind kind) {

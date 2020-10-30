@@ -32,17 +32,14 @@ static bool thread_inclusion_predicate(Thread* t) {
   return !t->jfr_thread_local()->is_dead();
 }
 
-static bool java_thread_inclusion_predicate(JavaThread* jt, bool live_only) {
+static bool java_thread_inclusion_predicate(JavaThread* jt) {
   assert(jt != NULL, "invariant");
-  if (live_only && jt->thread_state() == _thread_new) {
-    return false;
-  }
-  return thread_inclusion_predicate(jt);
+  return thread_inclusion_predicate(jt) && jt->thread_state() != _thread_new;
 }
 
-static JavaThread* next_java_thread(JavaThreadIteratorWithHandle& iter, bool live_only) {
+static JavaThread* next_java_thread(JavaThreadIteratorWithHandle& iter) {
   JavaThread* next = iter.next();
-  while (next != NULL && !java_thread_inclusion_predicate(next, live_only)) {
+  while (next != NULL && !java_thread_inclusion_predicate(next)) {
     next = iter.next();
   }
   return next;
@@ -60,19 +57,17 @@ static NonJavaThread* next_non_java_thread(NonJavaThread::Iterator& iter) {
   return NULL;
 }
 
-JfrJavaThreadIteratorAdapter::JfrJavaThreadIteratorAdapter(bool live_only /* true */) : _iter(),
-                                                                                        _next(next_java_thread(_iter, live_only)),
-                                                                                        _live_only(live_only) {}
+JfrJavaThreadIteratorAdapter::JfrJavaThreadIteratorAdapter() : _iter(), _next(next_java_thread(_iter)) {}
 
 JavaThread* JfrJavaThreadIteratorAdapter::next() {
   assert(has_next(), "invariant");
   Type* const temp = _next;
-  _next = next_java_thread(_iter, _live_only);
+  _next = next_java_thread(_iter);
   assert(temp != _next, "invariant");
   return temp;
 }
 
-JfrNonJavaThreadIteratorAdapter::JfrNonJavaThreadIteratorAdapter(bool live_only /* true */) : _iter(), _next(next_non_java_thread(_iter)) {}
+JfrNonJavaThreadIteratorAdapter::JfrNonJavaThreadIteratorAdapter() : _iter(), _next(next_non_java_thread(_iter)) {}
 
 bool JfrNonJavaThreadIteratorAdapter::has_next() const {
   return _next != NULL;

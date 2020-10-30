@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -63,7 +63,7 @@ import java.io.IOException;
  * @author Glenn Marcy, IBM
  * @author Eric Ye, IBM
  *
- * @LastModified: Feb 2020
+ * @LastModified: Nov 2017
  */
 public class XMLDTDScannerImpl
 extends XMLScanner
@@ -608,7 +608,6 @@ implements XMLDTDScanner, XMLComponent, XMLEntityHandler {
         if (fScannerState == SCANNER_STATE_END_OF_INPUT)
             return;
 
-        boolean dtdEntity = name.equals("[dtd]");
         // Handle end of PE
         boolean reportEntity = fReportEntity;
         if (name.startsWith("%")) {
@@ -617,7 +616,8 @@ implements XMLDTDScanner, XMLComponent, XMLEntityHandler {
             int startMarkUpDepth = popPEStack();
             // throw fatalError if this entity was incomplete and
             // was a freestanding decl
-            if (startMarkUpDepth == 0 && startMarkUpDepth < fMarkUpDepth) {
+            if(startMarkUpDepth == 0 &&
+            startMarkUpDepth < fMarkUpDepth) {
                 fErrorReporter.reportError(XMLMessageFormatter.XML_DOMAIN,
                 "ILL_FORMED_PARAMETER_ENTITY_WHEN_USED_IN_DECL",
                 new Object[]{ fEntityManager.fCurrentEntity.name},
@@ -637,10 +637,12 @@ implements XMLDTDScanner, XMLComponent, XMLEntityHandler {
             if (fEntityScanner.isExternal()) {
                 fExtEntityDepth--;
             }
-            // call handler
-            if (fDTDHandler != null && reportEntity) {
-                fDTDHandler.endParameterEntity(name, null);
-            }
+        }
+
+        // call handler
+        boolean dtdEntity = name.equals("[dtd]");
+        if (fDTDHandler != null && !dtdEntity && reportEntity) {
+            fDTDHandler.endParameterEntity(name, null);
         }
 
         // end DTD

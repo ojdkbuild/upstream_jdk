@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1067,7 +1067,7 @@ final class DirectAudioDevice extends AbstractMixer {
         public void open(AudioInputStream stream) throws LineUnavailableException, IOException {
 
             // $$fb part of fix for 4679187: Clip.open() throws unexpected Exceptions
-            Toolkit.isFullySpecifiedAudioFormat(stream.getFormat());
+            Toolkit.isFullySpecifiedAudioFormat(format);
 
             synchronized (mixer) {
                 byte[] streamData = null;
@@ -1078,18 +1078,11 @@ final class DirectAudioDevice extends AbstractMixer {
                 }
                 int lengthInFrames = (int)stream.getFrameLength();
                 int bytesRead = 0;
-                int frameSize = stream.getFormat().getFrameSize();
                 if (lengthInFrames != AudioSystem.NOT_SPECIFIED) {
                     // read the data from the stream into an array in one fell swoop.
-                    int arraysize = lengthInFrames * frameSize;
-                    if (arraysize < 0) {
-                        throw new IllegalArgumentException("Audio data < 0");
-                    }
-                    try {
-                        streamData = new byte[arraysize];
-                    } catch (OutOfMemoryError e) {
-                        throw new IOException("Audio data is too big");
-                    }
+                    int arraysize = lengthInFrames * stream.getFormat().getFrameSize();
+                    streamData = new byte[arraysize];
+
                     int bytesRemaining = arraysize;
                     int thisRead = 0;
                     while (bytesRemaining > 0 && thisRead >= 0) {
@@ -1107,14 +1100,9 @@ final class DirectAudioDevice extends AbstractMixer {
                     // we use a slightly modified version of ByteArrayOutputStream
                     // to get direct access to the byte array (we don't want a new array
                     // to be allocated)
-                    int maxReadLimit = Math.max(16384, frameSize);
+                    int MAX_READ_LIMIT = 16384;
                     DirectBAOS dbaos  = new DirectBAOS();
-                    byte[] tmp;
-                    try {
-                        tmp = new byte[maxReadLimit];
-                    } catch (OutOfMemoryError e) {
-                        throw new IOException("Audio data is too big");
-                    }
+                    byte[] tmp = new byte[MAX_READ_LIMIT];
                     int thisRead = 0;
                     while (thisRead >= 0) {
                         thisRead = stream.read(tmp, 0, tmp.length);
@@ -1128,7 +1116,7 @@ final class DirectAudioDevice extends AbstractMixer {
                     } // while
                     streamData = dbaos.getInternalBuffer();
                 }
-                lengthInFrames = bytesRead / frameSize;
+                lengthInFrames = bytesRead / stream.getFormat().getFrameSize();
 
                 // now try to open the device
                 open(stream.getFormat(), streamData, lengthInFrames);

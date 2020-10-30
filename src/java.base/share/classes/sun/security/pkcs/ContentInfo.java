@@ -116,9 +116,6 @@ public class ContentInfo {
         DerValue[] contents;
 
         typeAndContent = derin.getSequence(2);
-        if (typeAndContent.length < 1 || typeAndContent.length > 2) {
-            throw new ParsingException("Invalid length for ContentInfo");
-        }
 
         // Parse the content type
         type = typeAndContent[0];
@@ -138,9 +135,6 @@ public class ContentInfo {
                 disTaggedContent
                     = new DerInputStream(taggedContent.toByteArray());
                 contents = disTaggedContent.getSet(1, true);
-                if (contents.length != 1) {
-                    throw new ParsingException("ContentInfo encoding error");
-                }
                 content = contents[0];
             }
         }

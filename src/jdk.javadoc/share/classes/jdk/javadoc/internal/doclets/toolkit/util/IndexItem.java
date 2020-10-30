@@ -26,6 +26,7 @@
 package jdk.javadoc.internal.doclets.toolkit.util;
 
 import jdk.javadoc.internal.doclets.formats.html.SearchIndexItem;
+import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -87,16 +88,6 @@ public class IndexItem {
 
     public String getLabel() {
         return label;
-    }
-
-    public String getFullyQualifiedLabel(Utils utils) {
-        if (typeElement != null) {
-            return utils.getFullyQualifiedName(typeElement) + "." + label;
-        } else if (element != null) {
-            return utils.getFullyQualifiedName(element);
-        } else {
-            return label;
-        }
     }
 
     public Element getElement() {

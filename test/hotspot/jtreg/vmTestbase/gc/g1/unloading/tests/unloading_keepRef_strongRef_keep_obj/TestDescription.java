@@ -33,6 +33,7 @@
  * @library /vmTestbase
  *          /test/lib
  *
+ * @run driver jdk.test.lib.FileInstaller . .
  *
  * @comment generate HumongousTemplateClass and compile it to test.classes
  * @run driver gc.g1.unloading.bytecode.GenClassesBuilder

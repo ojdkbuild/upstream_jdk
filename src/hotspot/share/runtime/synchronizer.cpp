@@ -174,7 +174,7 @@ static ObjectMonitorListGlobals om_list_globals;
 // Return true if the ObjectMonitor is locked.
 // Otherwise returns false.
 static bool is_locked(ObjectMonitor* om) {
-  return ((intptr_t)om->next_om_acquire() & OM_LOCK_BIT) == OM_LOCK_BIT;
+  return ((intptr_t)om->next_om() & OM_LOCK_BIT) == OM_LOCK_BIT;
 }
 
 // Mark an ObjectMonitor* with OM_LOCK_BIT and return it.
@@ -215,23 +215,18 @@ static void om_unlock(ObjectMonitor* om) {
             " must have OM_LOCK_BIT=%x set.", p2i(next), OM_LOCK_BIT);
 
   next = (ObjectMonitor*)((intptr_t)next & ~OM_LOCK_BIT);  // Clear OM_LOCK_BIT.
-  om->release_set_next_om(next);
+  om->set_next_om(next);
 }
 
 // Get the list head after locking it. Returns the list head or NULL
 // if the list is empty.
 static ObjectMonitor* get_list_head_locked(ObjectMonitor** list_p) {
   while (true) {
-    // Acquire semantics not needed on this list load since we're
-    // checking for NULL here or following up with a cmpxchg() via
-    // try_om_lock() below and we retry on cmpxchg() failure.
     ObjectMonitor* mid = Atomic::load(list_p);
     if (mid == NULL) {
       return NULL;  // The list is empty.
     }
     if (try_om_lock(mid)) {
-      // Acquire semantics not needed on this list load since memory is
-      // already consistent due to the cmpxchg() via try_om_lock() above.
       if (Atomic::load(list_p) != mid) {
         // The list head changed before we could lock it so we have to retry.
         om_unlock(mid);
@@ -254,17 +249,12 @@ static void prepend_list_to_common(ObjectMonitor* list, ObjectMonitor* tail,
                                    int count, ObjectMonitor** list_p,
                                    int* count_p) {
   while (true) {
-    // Acquire semantics not needed on this list load since we're
-    // following up with a cmpxchg() via try_om_lock() below and we
-    // retry on cmpxchg() failure.
     ObjectMonitor* cur = Atomic::load(list_p);
     // Prepend list to *list_p.
     if (!try_om_lock(tail)) {
       // Failed to lock tail due to a list walker so try it all again.
       continue;
     }
-    // Release semantics not needed on this "unlock" since memory is
-    // already consistent due to the cmpxchg() via try_om_lock() above.
     tail->set_next_om(cur);  // tail now points to cur (and unlocks tail)
     if (cur == NULL) {
       // No potential race with takers or other prependers since
@@ -352,19 +342,14 @@ static void prepend_to_common(ObjectMonitor* m, ObjectMonitor** list_p,
     // Lock the list head to guard against races with a list walker
     // or async deflater thread (which only races in om_in_use_list):
     if ((cur = get_list_head_locked(list_p)) != NULL) {
-      // List head is now locked so we can safely switch it. Release
-      // semantics not needed on this "unlock" since memory is already
-      // consistent due to the cmpxchg() via get_list_head_locked() above.
+      // List head is now locked so we can safely switch it.
       m->set_next_om(cur);  // m now points to cur (and unlocks m)
-      OrderAccess::storestore();  // Make sure set_next_om() is seen first.
       Atomic::store(list_p, m);  // Switch list head to unlocked m.
       om_unlock(cur);
       break;
     }
     // The list is empty so try to set the list head.
     assert(cur == NULL, "cur must be NULL: cur=" INTPTR_FORMAT, p2i(cur));
-    // Release semantics not needed on this "unlock" since memory
-    // is already consistent.
     m->set_next_om(cur);  // m now points to NULL (and unlocks m)
     if (Atomic::cmpxchg(list_p, cur, m) == cur) {
       // List head is now unlocked m.
@@ -399,9 +384,7 @@ static ObjectMonitor* take_from_start_of_common(ObjectMonitor** list_p,
   }
   ObjectMonitor* next = unmarked_next(take);
   // Switch locked list head to next (which unlocks the list head, but
-  // leaves take locked). Release semantics not needed on this "unlock"
-  // since memory is already consistent due to the cmpxchg() via
-  // get_list_head_locked() above.
+  // leaves take locked):
   Atomic::store(list_p, next);
   Atomic::dec(count_p);
   // Unlock take, but leave the next value for any lagging list
@@ -1360,7 +1343,6 @@ void ObjectSynchronizer::oops_do(OopClosure* f) {
 
 void ObjectSynchronizer::global_used_oops_do(OopClosure* f) {
   assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
-  // Acquire semantics not needed since we're at a safepoint.
   list_oops_do(Atomic::load(&om_list_globals._in_use_list), f);
 }
 
@@ -1426,9 +1408,6 @@ ObjectMonitor* ObjectSynchronizer::om_alloc(Thread* self) {
     // 2: try to allocate from the global om_list_globals._free_list
     // If we're using thread-local free lists then try
     // to reprovision the caller's free list.
-    // Acquire semantics not needed on this list load since memory
-    // is already consistent due to the cmpxchg() via
-    // take_from_start_of_om_free_list() above.
     if (Atomic::load(&om_list_globals._free_list) != NULL) {
       // Reprovision the thread's om_free_list.
       // Use bulk transfers to reduce the allocation rate and heat
@@ -1557,9 +1536,7 @@ void ObjectSynchronizer::om_release(Thread* self, ObjectMonitor* m,
       // First special case:
       // 'm' matches mid, is the list head and is locked. Switch the list
       // head to next which unlocks the list head, but leaves the extracted
-      // mid locked. Release semantics not needed on this "unlock" since
-      // memory is already consistent due to the get_list_head_locked()
-      // above.
+      // mid locked:
       Atomic::store(&self->om_in_use_list, next);
     } else if (m == next) {
       // Second special case:
@@ -1573,9 +1550,7 @@ void ObjectSynchronizer::om_release(Thread* self, ObjectMonitor* m,
       // Update next to what follows mid (if anything):
       next = unmarked_next(mid);
       // Switch next after the list head to new next which unlocks the
-      // list head, but leaves the extracted mid locked. Release semantics
-      // not needed on this "unlock" since memory is already consistent
-      // due to the get_list_head_locked() above.
+      // list head, but leaves the extracted mid locked:
       self->om_in_use_list->set_next_om(next);
     } else {
       // We have to search the list to find 'm'.
@@ -1595,10 +1570,7 @@ void ObjectSynchronizer::om_release(Thread* self, ObjectMonitor* m,
           // Update next to what follows mid (if anything):
           next = unmarked_next(mid);
           // Switch next after the anchor to new next which unlocks the
-          // anchor, but leaves the extracted mid locked. Release semantics
-          // not needed on this "unlock" since memory is already consistent
-          // due to the om_unlock() above before entering the loop or the
-          // om_unlock() below before looping again.
+          // anchor, but leaves the extracted mid locked:
           anchor->set_next_om(next);
           break;
         } else {
@@ -1704,7 +1676,6 @@ void ObjectSynchronizer::om_flush(Thread* self) {
     ADIM_guarantee(l_om_in_use_count == in_use_count, "in-use counts don't match: "
                    "l_om_in_use_count=%d, in_use_count=%d", l_om_in_use_count, in_use_count);
     Atomic::store(&self->om_in_use_count, 0);
-    OrderAccess::storestore();  // Make sure counter update is seen first.
     // Clear the in-use list head (which also unlocks it):
     Atomic::store(&self->om_in_use_list, (ObjectMonitor*)NULL);
     om_unlock(in_use_list);
@@ -1748,7 +1719,6 @@ void ObjectSynchronizer::om_flush(Thread* self) {
     ADIM_guarantee(l_om_free_count == free_count, "free counts don't match: "
                    "l_om_free_count=%d, free_count=%d", l_om_free_count, free_count);
     Atomic::store(&self->om_free_count, 0);
-    OrderAccess::storestore();  // Make sure counter update is seen first.
     Atomic::store(&self->om_free_list, (ObjectMonitor*)NULL);
     om_unlock(free_list);
   }
@@ -1933,14 +1903,12 @@ ObjectMonitor* ObjectSynchronizer::inflate(Thread* self, oop object,
       // Must preserve store ordering. The monitor state must
       // be stable at the time of publishing the monitor address.
       guarantee(object->mark() == markWord::INFLATING(), "invariant");
-      // Release semantics so that above set_object() is seen first.
       object->release_set_mark(markWord::encode(m));
 
       // Once ObjectMonitor is configured and the object is associated
       // with the ObjectMonitor, it is safe to allow async deflation:
       assert(m->is_new(), "freshly allocated monitor must be new");
-      // Release semantics needed to keep allocation_state from floating up.
-      m->release_set_allocation_state(ObjectMonitor::Old);
+      m->set_allocation_state(ObjectMonitor::Old);
 
       // Hopefully the performance counters are allocated on distinct cache lines
       // to avoid false sharing on MP systems ...
@@ -1997,8 +1965,6 @@ ObjectMonitor* ObjectSynchronizer::inflate(Thread* self, oop object,
     // Once the ObjectMonitor is configured and object is associated
     // with the ObjectMonitor, it is safe to allow async deflation:
     assert(m->is_new(), "freshly allocated monitor must be new");
-    // Release semantics are not needed to keep allocation_state from
-    // floating up since cas_set_mark() takes care of it.
     m->set_allocation_state(ObjectMonitor::Old);
 
     // Hopefully the performance counters are allocated on distinct
@@ -2107,7 +2073,6 @@ bool ObjectSynchronizer::deflate_monitor(ObjectMonitor* mid, oop obj,
     }
 
     // Restore the header back to obj
-    // XXX - I have no rationale for this "release", but it's been here forever.
     obj->release_set_mark(dmw);
     if (AsyncDeflateIdleMonitors) {
       // clear() expects the owner field to be NULL.
@@ -2310,8 +2275,7 @@ int ObjectSynchronizer::deflate_monitor_list(ObjectMonitor** list_p,
       // At this point mid is disconnected from the in-use list.
       deflated_count++;
       Atomic::dec(count_p);
-      // mid is current tail in the free_head_p list so NULL terminate it.
-      // No release semantics needed since Atomic::dec() already provides it.
+      // mid is current tail in the free_head_p list so NULL terminate it:
       mid->set_next_om(NULL);
     } else {
       cur_mid_in_use = mid;
@@ -2392,24 +2356,20 @@ int ObjectSynchronizer::deflate_monitor_list_using_JT(ObjectMonitor** list_p,
       if (cur_mid_in_use == NULL) {
         // mid is the list head and it is locked. Switch the list head
         // to next which is also locked (if not NULL) and also leave
-        // mid locked. Release semantics needed since not all code paths
-        // in deflate_monitor_using_JT() ensure memory consistency.
-        Atomic::release_store(list_p, next);
+        // mid locked:
+        Atomic::store(list_p, next);
       } else {
         ObjectMonitor* locked_next = mark_om_ptr(next);
         // mid and cur_mid_in_use are locked. Switch cur_mid_in_use's
-        // next field to locked_next and also leave mid locked.
-        // Release semantics needed since not all code paths in
-        // deflate_monitor_using_JT() ensure memory consistency.
-        cur_mid_in_use->release_set_next_om(locked_next);
+        // next field to locked_next and also leave mid locked:
+        cur_mid_in_use->set_next_om(locked_next);
       }
       // At this point mid is disconnected from the in-use list so
       // its lock longer has any effects on in-use list.
       deflated_count++;
       Atomic::dec(count_p);
-      // mid is current tail in the free_head_p list so NULL terminate
-      // it (which also unlocks it). No release semantics needed since
-      // Atomic::dec() already provides it.
+      // mid is current tail in the free_head_p list so NULL terminate it
+      // (which also unlocks it):
       mid->set_next_om(NULL);
 
       // All the list management is done so move on to the next one:
@@ -2437,9 +2397,6 @@ int ObjectSynchronizer::deflate_monitor_list_using_JT(ObjectMonitor** list_p,
       next = next_next;
 
       if (SafepointMechanism::should_block(self) &&
-          // Acquire semantics are not needed on this list load since
-          // it is not dependent on the following load which does have
-          // acquire semantics.
           cur_mid_in_use != Atomic::load(list_p) && cur_mid_in_use->is_old()) {
         // If a safepoint has started and cur_mid_in_use is not the list
         // head and is old, then it is safe to use as saved state. Return
@@ -2502,7 +2459,6 @@ void ObjectSynchronizer::deflate_idle_monitors(DeflateMonitorCounters* counters)
 
   // For moribund threads, scan om_list_globals._in_use_list
   int deflated_count = 0;
-  // Acquire semantics not needed since we are at a safepoint.
   if (Atomic::load(&om_list_globals._in_use_list) != NULL) {
     // Update n_in_circulation before om_list_globals._in_use_count is
     // updated by deflation.
@@ -2588,7 +2544,6 @@ void ObjectSynchronizer::deflate_idle_monitors_using_JT() {
     ADIM_guarantee(list != NULL, "om_list_globals._wait_list must not be NULL");
     int count = Atomic::load(&om_list_globals._wait_count);
     Atomic::store(&om_list_globals._wait_count, 0);
-    OrderAccess::storestore();  // Make sure counter update is seen first.
     Atomic::store(&om_list_globals._wait_list, (ObjectMonitor*)NULL);
 
     // Find the tail for prepend_list_to_common(). No need to mark

@@ -68,7 +68,8 @@ package gc.arguments;
 /*
  * @test TestUseCompressedOopsErgoShenandoah
  * @bug 8010722
- * @requires vm.gc.Shenandoah
+ * @comment Graal does not support Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  * @library /
  * @modules java.base/jdk.internal.misc

@@ -181,9 +181,7 @@ public class ReflectionFactory {
                 field = root;
             }
         }
-        boolean isFinal = Modifier.isFinal(field.getModifiers());
-        boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
-        return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
+        return UnsafeFieldAccessorFactory.newFieldAccessor(field, override);
     }
 
     public MethodAccessor newMethodAccessor(Method method) {

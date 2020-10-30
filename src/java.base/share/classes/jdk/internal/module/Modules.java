@@ -56,7 +56,7 @@ import jdk.internal.access.SharedSecrets;
  * code that need to link to supporting classes.
  *
  * The parameters that are package names in this API are the fully-qualified
- * names of the packages as defined in section 6.5.3 of <cite>The Java
+ * names of the packages as defined in section 6.5.3 of <cite>The Java&trade;
  * Language Specification </cite>, for example, {@code "java.lang"}.
  */
 

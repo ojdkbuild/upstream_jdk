@@ -41,8 +41,7 @@ public class SharedBaseAddress {
     private static final String[] testTable = {
         "1g", "8g", "64g","512g", "4t",
         "32t", "128t", "0",
-        "1", "64k", "64M", "320g",
-        "0x800001000"  // Default base address + 1 page - probably valid but unaligned to metaspace alignment, see JDK 8247522
+        "1", "64k", "64M", "320g"
     };
 
     public static void main(String[] args) throws Exception {

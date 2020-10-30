@@ -80,6 +80,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native gc.gctests.nativeGC05.nativeGC05
  */
 

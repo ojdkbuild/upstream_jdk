@@ -25,7 +25,7 @@ package gc.epsilon;
 
 /**
  * @test TestArraycopyCheckcast
- * @requires vm.gc.Epsilon
+ * @requires vm.gc.Epsilon & !vm.graal.enabled
  * @summary Epsilon is able to handle checkcasted array copies
  * @library /test/lib
  * @bug 8215724

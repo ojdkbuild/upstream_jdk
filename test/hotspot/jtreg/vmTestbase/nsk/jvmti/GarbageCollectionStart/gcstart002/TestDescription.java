@@ -40,6 +40,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native
  *      -XX:-UseGCOverheadLimit
  *      -agentlib:gcstart002=-waittime=5

@@ -31,6 +31,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm gc.memory.Churn.Churn4.Churn4
  */
 

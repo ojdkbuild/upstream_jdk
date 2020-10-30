@@ -39,8 +39,6 @@ public class TestJavaFX extends JavadocTester {
 
     public static void main(String... args) throws Exception {
         TestJavaFX tester = new TestJavaFX();
-        tester.setAutomaticCheckAccessibility(false);
-        tester.setAutomaticCheckLinks(false);
         tester.runTests();
     }
 
@@ -355,6 +353,6 @@ public class TestJavaFX extends JavadocTester {
         checkExit(Exit.OK);
 
         // make sure the doclet indeed emits the warning
-        checkOutput(Output.OUT, true, "C.java:0: warning - invalid usage of tag <");
+        checkOutput(Output.OUT, true, "C.java:0: warning - invalid usage of tag >");
     }
 }

@@ -30,6 +30,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm gc.memory.LargePagesTest.LargePagesTest noThreads=5 duration=60
  */
 

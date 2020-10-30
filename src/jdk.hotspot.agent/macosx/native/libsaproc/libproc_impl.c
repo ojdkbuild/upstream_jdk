@@ -56,8 +56,6 @@ int pathmap_open(const char* name) {
     if (fd >= 0) {
       print_debug("path %s substituted for %s\n", alt_path, name);
       return fd;
-    } else {
-      print_debug("can't open %s\n", alt_path);
     }
 
     if (strrchr(name, '/')) {
@@ -67,16 +65,12 @@ int pathmap_open(const char* name) {
       if (fd >= 0) {
         print_debug("path %s substituted for %s\n", alt_path, name);
         return fd;
-    } else {
-      print_debug("can't open %s\n", alt_path);
       }
     }
   } else {
     fd = open(name, O_RDONLY);
     if (fd >= 0) {
       return fd;
-    } else {
-      print_debug("can't open %s\n", name);
     }
   }
   return -1;

@@ -91,13 +91,3 @@ function switchTab(e) {
         e.preventDefault();
     }
 }
-
-var updateSearchResults = function() {};
-
-function indexFilesLoaded() {
-    return moduleSearchIndex
-        && packageSearchIndex
-        && typeSearchIndex
-        && memberSearchIndex
-        && tagSearchIndex;
-}

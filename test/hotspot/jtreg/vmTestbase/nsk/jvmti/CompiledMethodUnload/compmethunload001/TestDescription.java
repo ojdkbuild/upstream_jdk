@@ -43,6 +43,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jvmti.CompiledMethodUnload.compmethunload001
  *
  * @comment compile loadclassXX to bin/loadclassXX

@@ -373,21 +373,23 @@ Java_sun_awt_windows_WCustomCursor_createCursorIndirect(
 
     int *cols = SAFE_SIZE_NEW_ARRAY2(int, nW, nH);
 
-    /* Copy the raster data because GDI may fail on some Java heap
-     * allocated memory.
-     */
-    length = env->GetArrayLength(intRasterData);
-    jint *intRasterDataPtr = new jint[length];
+    jint *intRasterDataPtr = NULL;
     HBITMAP hColor = NULL;
     try {
-        env->GetIntArrayRegion(intRasterData, 0, length, intRasterDataPtr);
+        intRasterDataPtr =
+            (jint *)env->GetPrimitiveArrayCritical(intRasterData, 0);
         hColor = create_BMP(NULL, (int *)intRasterDataPtr, nSS, nW, nH);
         memcpy(cols, intRasterDataPtr, nW*nH*sizeof(int));
     } catch (...) {
-        delete[] intRasterDataPtr;
+        if (intRasterDataPtr != NULL) {
+            env->ReleasePrimitiveArrayCritical(intRasterData,
+                                               intRasterDataPtr, 0);
+        }
         throw;
     }
-    delete[] intRasterDataPtr;
+
+    env->ReleasePrimitiveArrayCritical(intRasterData, intRasterDataPtr, 0);
+    intRasterDataPtr = NULL;
 
     HCURSOR hCursor = NULL;
 

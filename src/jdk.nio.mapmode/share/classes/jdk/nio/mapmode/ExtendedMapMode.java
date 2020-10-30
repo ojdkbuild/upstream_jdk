@@ -25,8 +25,6 @@
 
 package jdk.nio.mapmode;
 
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
 /**
@@ -54,7 +52,7 @@ public class ExtendedMapMode {
 
     /**
      * File mapping mode for a read-write mapping of a file backed by
-     * non-volatile RAM. {@linkplain MappedByteBuffer#force force}
+     * non-volatile RAM. {@linkplain MappedByteBufefr#force force}
      * operations on a buffer created with this mode will be performed
      * using cache line writeback rather than proceeding via a file
      * device flush.

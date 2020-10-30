@@ -24,7 +24,7 @@
  */
 
 /**
- * Provides the principal classes and interfaces for the Java Print
+ * Provides the principal classes and interfaces for the Java&trade; Print
  * Service API. The Java Print Service API enables client and server
  * applications to:
  * <ul>

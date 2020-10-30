@@ -37,6 +37,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm
  *      nsk.monitoring.ThreadMXBean.findMonitorDeadlockedThreads.find001
  *      -testMode=server

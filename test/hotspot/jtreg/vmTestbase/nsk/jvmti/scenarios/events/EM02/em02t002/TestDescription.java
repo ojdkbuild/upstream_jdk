@@ -71,6 +71,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native
  *      -agentlib:em02t002=-waittime=5
  *      -XX:-UseGCOverheadLimit

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,11 +21,10 @@
  * questions.
  */
 
-/*
+/**
  * @test
- * @modules java.scripting
- * @library modules classpath/pearscript
- * @build ReloadTest org.pear.PearScript org.pear.PearScriptEngineFactory bananascript/*
+ * @library modules
+ * @modules jdk.scripting.nashorn
  * @run testng/othervm ReloadTest
  * @summary Basic test of ServiceLoader.reload
  */
@@ -40,6 +39,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static java.util.ServiceLoader.*;
 import javax.script.ScriptEngineFactory;
+
 import org.testng.annotations.Test;
 import static org.testng.Assert.*;
 

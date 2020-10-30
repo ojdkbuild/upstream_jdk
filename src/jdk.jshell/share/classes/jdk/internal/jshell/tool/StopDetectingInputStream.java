@@ -28,7 +28,6 @@ package jdk.internal.jshell.tool;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
-import jdk.internal.org.jline.utils.NonBlockingInputStream;
 
 public final class StopDetectingInputStream extends InputStream {
     public static final int INITIAL_SIZE = 128;
@@ -64,19 +63,7 @@ public final class StopDetectingInputStream extends InputStream {
                     if (currentState == State.CLOSED) {
                         break;
                     }
-                    if (input instanceof NonBlockingInputStream) {
-                        //workaround: NonBlockingPumpReader.read(), which should
-                        //block until input is available, returns immediatelly,
-                        //which causes busy-waiting for input, consuming
-                        //unnecessary CPU resources. Using a timeout to avoid
-                        //blocking read:
-                        do {
-                            read = ((NonBlockingInputStream) input).read(1000L);
-                        } while (read == NonBlockingInputStream.READ_EXPIRED);
-                    } else {
-                        read = input.read();
-                    }
-                    if (read == (-1)) {
+                    if ((read = input.read()) == (-1)) {
                         break;
                     }
                     if (read == 3 && getState() == State.BUFFER) {

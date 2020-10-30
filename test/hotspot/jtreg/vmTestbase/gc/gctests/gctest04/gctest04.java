@@ -31,6 +31,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @compile reqgen.java
  * @run main/othervm gc.gctests.gctest04.gctest04
  */

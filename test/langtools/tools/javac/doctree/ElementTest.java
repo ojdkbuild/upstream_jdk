@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 7021614 8078320 8247788
+ * @bug 7021614 8078320
  * @summary extend com.sun.source API to support parsing javadoc comments
  * @modules jdk.compiler/com.sun.tools.javac.api
  *          jdk.compiler/com.sun.tools.javac.file
@@ -93,8 +93,13 @@ DocComment[DOC_COMMENT, pos:1
     void bad_gt() { }
 /*
 DocComment[DOC_COMMENT, pos:1
-  firstSentence: 1
-    Text[TEXT, pos:1, abc_>_def]
+  firstSentence: 3
+    Text[TEXT, pos:1, abc_]
+    Erroneous[ERRONEOUS, pos:5
+      code: compiler.err.dc.bad.gt
+      body: >
+    ]
+    Text[TEXT, pos:6, _def]
   body: empty
   block tags: empty
 ]
@@ -106,13 +111,18 @@ DocComment[DOC_COMMENT, pos:1
     void bad_chars_start();
 /*
 DocComment[DOC_COMMENT, pos:1
-  firstSentence: 3
+  firstSentence: 5
     Text[TEXT, pos:1, abc_]
     Erroneous[ERRONEOUS, pos:5
       code: compiler.err.dc.malformed.html
       body: <
     ]
-    Text[TEXT, pos:6, p_123>_def]
+    Text[TEXT, pos:6, p_123]
+    Erroneous[ERRONEOUS, pos:11
+      code: compiler.err.dc.bad.gt
+      body: >
+    ]
+    Text[TEXT, pos:12, _def]
   body: empty
   block tags: empty
 ]
@@ -124,13 +134,18 @@ DocComment[DOC_COMMENT, pos:1
     void bad_chars_end();
 /*
 DocComment[DOC_COMMENT, pos:1
-  firstSentence: 3
+  firstSentence: 5
     Text[TEXT, pos:1, abc_]
     Erroneous[ERRONEOUS, pos:5
       code: compiler.err.dc.malformed.html
       body: <
     ]
-    Text[TEXT, pos:6, /p_123>_def]
+    Text[TEXT, pos:6, /p_123]
+    Erroneous[ERRONEOUS, pos:12
+      code: compiler.err.dc.bad.gt
+      body: >
+    ]
+    Text[TEXT, pos:13, _def]
   body: empty
   block tags: empty
 ]

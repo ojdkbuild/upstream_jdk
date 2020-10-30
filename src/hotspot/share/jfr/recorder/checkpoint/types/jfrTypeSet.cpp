@@ -761,7 +761,6 @@ int write__method(JfrCheckpointWriter* writer, const void* m) {
 int write__method__leakp(JfrCheckpointWriter* writer, const void* m) {
   assert(m != NULL, "invariant");
   MethodPtr method = (MethodPtr)m;
-  CLEAR_LEAKP_METHOD(method);
   return write_method(writer, method, true);
 }
 

@@ -42,6 +42,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm
  *      nsk.monitoring.ThreadMXBean.resetPeakThreadCount.reset001
  *      -testMode=proxy

@@ -33,6 +33,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native -agentlib:Abort=-waittime=5 nsk.jvmti.IterateThroughHeap.abort.Abort
  */
 

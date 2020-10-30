@@ -86,12 +86,8 @@ class ZipCoder {
         }
     }
 
-    static String toStringUTF8(byte[] ba, int len) {
+    String toStringUTF8(byte[] ba, int len) {
         return UTF8.toString(ba, 0, len);
-    }
-
-    static String toStringUTF8(byte[] ba, int off, int len) {
-        return UTF8.toString(ba, off, len);
     }
 
     boolean isUTF8() {

@@ -51,7 +51,8 @@ package gc.arguments;
 /**
  * @test TestAlignmentToUseLargePagesShenandoah
  * @bug 8024396
- * @requires vm.gc.Shenandoah
+ * @comment Graal does not support Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @run main/othervm -Xms71M -Xmx91M -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+UseLargePages gc.arguments.TestAlignmentToUseLargePages
  * @run main/othervm -Xms71M -Xmx91M -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:-UseLargePages gc.arguments.TestAlignmentToUseLargePages
  */

@@ -45,6 +45,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @comment generate and compile LoadableClassXXX classes
  * @run driver nsk.monitoring.stress.classload.GenClassesBuilder
  * @run main/othervm

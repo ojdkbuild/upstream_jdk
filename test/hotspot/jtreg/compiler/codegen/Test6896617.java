@@ -31,7 +31,6 @@
  *          java.base/sun.nio.cs
  *          java.management
  *
- * @ignore 8193479
  * @run main/othervm/timeout=1200 -Xbatch -Xmx256m compiler.codegen.Test6896617
  */
 

@@ -84,21 +84,16 @@ public class SigningCheck {
     }
 
     private static void validateCertificateTrust(String name) {
-        // Certificates using the default user name must be trusted by user.
-        // User supplied certs whose trust is set to "Use System Defaults"
-        // will not be listed as trusted by dump-trust-settings
-        if (SigningBase.DEV_NAME.equals("jpackage.openjdk.java.net")) {
-            List<String> result = new Executor()
-                    .setExecutable("security")
-                    .addArguments("dump-trust-settings")
-                    .executeWithoutExitCodeCheckAndGetOutput();
-            result.stream().forEachOrdered(TKit::trace);
-            TKit.assertTextStream(name)
-                    .predicate((line, what) -> line.trim().endsWith(what))
-                    .orElseThrow(() -> TKit.throwSkippedException(
-                            "Certifcate not trusted by current user: " + name))
-                    .apply(result.stream());
-        }
+        List<String> result = new Executor()
+                .setExecutable("security")
+                .addArguments("dump-trust-settings")
+                .executeWithoutExitCodeCheckAndGetOutput();
+        result.stream().forEachOrdered(TKit::trace);
+        TKit.assertTextStream(name)
+                .predicate((line, what) -> line.trim().endsWith(what))
+                .orElseThrow(() -> TKit.throwSkippedException(
+                        "Certifcate not trusted by current user: " + name))
+                .apply(result.stream());
     }
 
 }

@@ -25,7 +25,7 @@
 /**
  * @test TestAllocSmallObj
  * @summary Test allocation of small object to result OOM, but not to crash JVM
- * @requires vm.gc.Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  * @run driver TestAllocSmallObj
  */

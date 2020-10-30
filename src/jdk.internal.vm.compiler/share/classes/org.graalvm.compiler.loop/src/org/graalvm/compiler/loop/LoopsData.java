@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package org.graalvm.compiler.loop;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 
 import jdk.internal.vm.compiler.collections.EconomicMap;
@@ -90,8 +92,8 @@ public class LoopsData {
         return loops;
     }
 
-    public List<LoopEx> countedLoops() {
-        List<LoopEx> counted = new ArrayList<>();
+    public Collection<LoopEx> countedLoops() {
+        List<LoopEx> counted = new LinkedList<>();
         for (LoopEx loop : loops()) {
             if (loop.isCounted()) {
                 counted.add(loop);

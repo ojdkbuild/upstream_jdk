@@ -31,6 +31,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm gc.memory.UniThread.Linear2.Linear2 -iterations 5
  */
 

@@ -50,6 +50,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @run main/othervm/native/timeout=300 gc.gctests.mallocWithGC3.mallocWithGC3
  */
 

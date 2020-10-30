@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8004834 8007610 8129909 8182765 8247815
+ * @bug 8004834 8007610 8129909 8182765
  * @summary Add doclint support into javadoc
  * @modules jdk.compiler/com.sun.tools.javac.main
  */
@@ -178,7 +178,7 @@ public class DocLintTest {
                     Main.Result.OK,
                     EnumSet.of(Message.DL_WRN12));
 
-            test(List.of(htmlVersion, rawDiags, "-Xdoclint:missing"),
+            test(List.of(htmlVersion, rawDiags, "-Xdoclint:syntax"),
                     Main.Result.OK,
                     EnumSet.of(Message.DL_WRN12));
 
@@ -186,7 +186,7 @@ public class DocLintTest {
                     Main.Result.ERROR,
                     EnumSet.of(Message.DL_ERR6, Message.DL_ERR9, Message.DL_WRN12));
 
-            test(List.of(htmlVersion, rawDiags, "-Xdoclint:missing,syntax", "-private"),
+            test(List.of(htmlVersion, rawDiags, "-Xdoclint:syntax", "-private"),
                     Main.Result.ERROR,
                     EnumSet.of(Message.DL_ERR6, Message.DL_WRN12));
 

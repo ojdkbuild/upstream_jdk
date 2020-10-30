@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
         <key>CFBundleIdentifier</key>
-        <string>@@ID@@</string>
+        <string>net.java.openjdk.cmd</string>
         <key>CFBundleInfoDictionaryVersion</key>
         <string>6.0</string>
         <key>CFBundleName</key>
@@ -11,7 +11,7 @@
         <key>CFBundleShortVersionString</key>
         <string>1.0</string>
         <key>CFBundleVersion</key>
-        <string>@@VERSION@@</string>
+        <string>1.0</string>
         <key>SecTaskAccess</key>
         <string>allowed</string>
 </dict>

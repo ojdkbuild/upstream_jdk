@@ -29,7 +29,7 @@
  *
  * <ul>
  *   <li><a href="{@docRoot}/../specs/security/standard-names.html">
- *     <b>Java Security Standard Algorithm Names Specification
+ *     <b>Java&trade; Security Standard Algorithm Names Specification
  *     </b></a></li>
  * </ul>
  *

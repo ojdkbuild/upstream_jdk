@@ -26,7 +26,7 @@
  * @test TestHumongousMoves
  * @summary Check Shenandoah reacts on setting humongous moves correctly
  * @key randomness
- * @requires vm.gc.Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -Xms1g

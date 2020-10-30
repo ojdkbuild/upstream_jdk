@@ -27,7 +27,7 @@
  * @bug 8059022
  * @modules java.base/jdk.internal.misc:+open
  * @summary Validate barriers after Unsafe getReference, CAS and swap (GetAndSet)
- * @requires vm.gc.Z
+ * @requires vm.gc.Z & !vm.graal.enabled
  * @library /test/lib
  * @run main/othervm -XX:+UseZGC -XX:+UnlockDiagnosticVMOptions -XX:+ZVerifyViews -XX:ZCollectionInterval=1 -XX:-CreateCoredumpOnCrash -XX:CompileCommand=dontinline,*::mergeImpl* compiler.gcbarriers.UnsafeIntrinsicsTest
  */

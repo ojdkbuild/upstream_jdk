@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
+ * @run driver jdk.test.lib.FileInstaller . .
  * @build nsk.jvmti.scenarios.bcinstr.BI04.bi04t002
  *        nsk.jvmti.scenarios.bcinstr.BI04.bi04t002a
  *
@@ -58,11 +59,11 @@
  * @build ExecDriver
  * @run driver PropertyResolvingWrapper ExecDriver --cmd
  *      ${compile.jdk}/bin/javac
- *      --patch-module java.base=${test.src}/newclass02/java.base
+ *      --patch-module java.base=newclass02/java.base
  *      -d bin/newclass02
  *      -cp ${test.class.path}
  *      --add-reads=java.base=ALL-UNNAMED
- *      ${test.src}/newclass02/java.base/java/lang/Object.java
+ *      newclass02/java.base/java/lang/Object.java
  *
  * @run main/othervm/native PropertyResolvingWrapper ExecDriver --java
  *      --add-reads=java.base=ALL-UNNAMED

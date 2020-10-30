@@ -49,7 +49,6 @@ import static java.io.ObjectStreamClass.processQueue;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import sun.reflect.misc.ReflectUtil;
-import sun.security.action.GetBooleanAction;
 
 /**
  * An ObjectInputStream deserializes primitive data and objects previously
@@ -295,14 +294,6 @@ public class ObjectInputStream
         /** queue for WeakReferences to audited subclasses */
         static final ReferenceQueue<Class<?>> subclassAuditsQueue =
             new ReferenceQueue<>();
-
-        /**
-         * Property to permit setting a filter after objects
-         * have been read.
-         * See {@link #setObjectInputFilter(ObjectInputFilter)}
-         */
-        static final boolean SET_FILTER_AFTER_READ = GetBooleanAction
-                .privilegedGetProperty("jdk.serialSetFilterAfterRead");
     }
 
     /*
@@ -1269,8 +1260,6 @@ public class ObjectInputStream
      * {@link ObjectInputFilter.Config#getSerialFilter() ObjectInputFilter.Config.getSerialFilter}
      * when the {@code  ObjectInputStream} is constructed and can be set
      * to a custom filter only once.
-     * The filter must be set before reading any objects from the stream;
-     * for example, by calling {@link #readObject} or {@link #readUnshared}.
      *
      * @implSpec
      * The filter, when not {@code null}, is invoked during {@link #readObject readObject}
@@ -1313,8 +1302,7 @@ public class ObjectInputStream
      * @throws SecurityException if there is security manager and the
      *       {@code SerializablePermission("serialFilter")} is not granted
      * @throws IllegalStateException if the {@linkplain #getObjectInputFilter() current filter}
-     *       is not {@code null} and is not the system-wide filter, or
-     *       if an object has been read
+     *       is not {@code null} and is not the system-wide filter
      * @since 9
      */
     public final void setObjectInputFilter(ObjectInputFilter filter) {
@@ -1326,10 +1314,6 @@ public class ObjectInputStream
         if (serialFilter != null &&
                 serialFilter != ObjectInputFilter.Config.getSerialFilter()) {
             throw new IllegalStateException("filter can not be set more than once");
-        }
-        if (totalObjectRefs > 0 && !Caches.SET_FILTER_AFTER_READ) {
-            throw new IllegalStateException(
-                    "filter can not be set after an object has been read");
         }
         this.serialFilter = filter;
     }
@@ -2155,6 +2139,11 @@ public class ObjectInputStream
         return result;
     }
 
+    @SuppressWarnings("preview")
+    private static boolean isRecord(Class<?> cls) {
+        return cls.isRecord();
+    }
+
     /**
      * Reads and returns "ordinary" (i.e., not a String, Class,
      * ObjectStreamClass, array, or enum constant) object, or null if object's
@@ -2193,7 +2182,7 @@ public class ObjectInputStream
             handles.markException(passHandle, resolveEx);
         }
 
-        final boolean isRecord = desc.isRecord();
+        final boolean isRecord = cl != null && isRecord(cl) ? true : false;
         if (isRecord) {
             assert obj == null;
             obj = readRecord(desc);
@@ -2300,14 +2289,14 @@ public class ObjectInputStream
 
         FieldValues fieldValues = defaultReadFields(null, desc);
 
-        // get canonical record constructor adapted to take two arguments:
-        // - byte[] primValues
-        // - Object[] objValues
-        // and return Object
-        MethodHandle ctrMH = RecordSupport.deserializationCtr(desc);
+        // retrieve the canonical constructor
+        MethodHandle ctrMH = desc.getRecordConstructor();
+
+        // bind the stream field values
+        ctrMH = RecordSupport.bindCtrValues(ctrMH, desc, fieldValues);
 
         try {
-            return (Object) ctrMH.invokeExact(fieldValues.primValues, fieldValues.objValues);
+            return ctrMH.invoke();
         } catch (Exception e) {
             InvalidObjectException ioe = new InvalidObjectException(e.getMessage());
             ioe.initCause(e);

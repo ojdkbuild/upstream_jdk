@@ -25,12 +25,12 @@
 
 /**
  * Provides the API for server side data source access and processing from
- * the Java programming language.
+ * the Java&trade; programming language.
  * This package supplements the {@code java.sql}
  * package and, as of the version 1.4 release, is included in the
- * Java Platform, Standard Edition (Java SE).
+ * Java Platform, Standard Edition (Java SE&trade;).
  * It remains an essential part of the Java Platform, Enterprise Edition
- * (Java EE).
+ * (Java EE&trade;).
  * <p>
  * The {@code javax.sql} package provides for the following:
  * <OL>
@@ -76,7 +76,7 @@
  * creates is a connection to that physical data source.
  * <p>
  * A logical name for the data source is registered with a naming service that
- * uses the Java Naming and Directory Interface
+ * uses the Java Naming and Directory Interface&trade;
  * (JNDI) API, usually by a system administrator or someone performing the
  * duties of a system administrator. An application can retrieve the
  * {@code DataSource} object it wants by doing a lookup on the logical
@@ -181,7 +181,7 @@
  * <LI>Event Notification
  * <UL>
  * <LI>{@code RowSetListener}<br>
- * A {@code RowSet} object is a JavaBeans
+ * A {@code RowSet} object is a JavaBeans&trade;
  * component because it has properties and participates in the JavaBeans
  * event notification mechanism. The {@code RowSetListener} interface
  * is implemented by a component that wants to be notified about events that
